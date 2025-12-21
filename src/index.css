@@ -1,0 +1,217 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Neuomorphic color palette - light gray base com cores mais suaves */
+    --neuro-bg: 224 224 224; /* #e0e0e0 */
+    --neuro-surface: 230 230 230; /* #e6e6e6 */
+    --neuro-element: 220 220 220; /* #dcdcdc */
+    --neuro-text-primary: 40 40 40; /* #282828 - mais escuro para melhor contraste */
+    --neuro-text-secondary: 80 80 80; /* #505050 - mais escuro */
+    --neuro-text-muted: 120 120 120; /* #787878 - mais escuro */
+    --neuro-accent: 79 130 189; /* #4f82bd - azul padrão */
+    --neuro-accent-light: 115 155 210; /* #739bd2 - azul claro padrão */
+    --neuro-success: 72 147 100; /* #489364 - verde mais suave */
+    --neuro-warning: 207 127 54; /* #cf7f36 - laranja mais suave */
+    --neuro-error: 189 82 82; /* #bd5252 - vermelho mais suave */
+    
+    /* Cores específicas para calendário */
+    --neuro-calendar-header: 210 210 210; /* #d2d2d2 */
+    --neuro-calendar-weekend: 189 82 82; /* #bd5252 - vermelho suave para fins de semana */
+    --neuro-calendar-weekday: 79 130 189; /* #4f82bd - azul padrão para dias úteis */
+    --neuro-calendar-event: 207 127 54; /* #cf7f36 - laranja suave para eventos */
+    --neuro-calendar-routine: 115 155 210; /* #739bd2 - azul claro padrão para rotinas */
+
+    /* Neuomorphic shadows */
+    --neuro-shadow-light: rgba(255, 255, 255, 0.7);
+    --neuro-shadow-dark: rgba(174, 174, 192, 0.4);
+    
+    /* Legacy colors for compatibility */
+    --background: var(--neuro-bg);
+    --foreground: var(--neuro-text-primary);
+    --card: var(--neuro-surface);
+    --card-foreground: var(--neuro-text-primary);
+    --popover: var(--neuro-surface);
+    --popover-foreground: var(--neuro-text-primary);
+    --primary: var(--neuro-accent);
+    --primary-foreground: 255 255 255;
+    --secondary: var(--neuro-element);
+    --secondary-foreground: var(--neuro-text-primary);
+    --muted: var(--neuro-element);
+    --muted-foreground: var(--neuro-text-muted);
+    --accent: var(--neuro-element);
+    --accent-foreground: var(--neuro-text-primary);
+    --destructive: var(--neuro-error);
+    --destructive-foreground: 255 255 255;
+    --border: var(--neuro-element);
+    --input: var(--neuro-element);
+    --ring: var(--neuro-accent);
+    --radius: 1rem;
+    --sidebar-background: var(--neuro-surface);
+    --sidebar-foreground: var(--neuro-text-primary);
+    --sidebar-primary: var(--neuro-accent);
+    --sidebar-primary-foreground: 255 255 255;
+    --sidebar-accent: var(--neuro-element);
+    --sidebar-accent-foreground: var(--neuro-text-primary);
+    --sidebar-border: var(--neuro-element);
+    --sidebar-ring: var(--neuro-accent);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-neuro-bg text-neuro-text-primary;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-weight: 500; /* Fonte um pouco mais pesada para melhor legibilidade */
+  }
+
+  /* Melhorar visibilidade de placeholders */
+  input::placeholder,
+  textarea::placeholder {
+    color: rgb(var(--neuro-text-secondary)) !important;
+    opacity: 0.8 !important;
+    font-weight: 500 !important;
+  }
+
+  /* Melhorar contraste de inputs */
+  input, textarea, select {
+    color: rgb(var(--neuro-text-primary)) !important;
+    font-weight: 500 !important;
+  }
+}
+
+/* Neuomorphic utility classes */
+@layer utilities {
+  .neuro-inset {
+    box-shadow: 
+      inset 8px 8px 16px var(--neuro-shadow-dark),
+      inset -8px -8px 16px var(--neuro-shadow-light);
+  }
+  
+  .neuro-outset {
+    box-shadow: 
+      8px 8px 16px var(--neuro-shadow-dark),
+      -8px -8px 16px var(--neuro-shadow-light);
+  }
+  
+  .neuro-outset-sm {
+    box-shadow: 
+      4px 4px 8px var(--neuro-shadow-dark),
+      -4px -4px 8px var(--neuro-shadow-light);
+  }
+  
+  .neuro-outset-lg {
+    box-shadow: 
+      12px 12px 24px var(--neuro-shadow-dark),
+      -12px -12px 24px var(--neuro-shadow-light);
+  }
+  
+  .neuro-pressed {
+    box-shadow: 
+      inset 4px 4px 8px var(--neuro-shadow-dark),
+      inset -4px -4px 8px var(--neuro-shadow-light);
+  }
+  
+  .neuro-hover {
+    transition: all 0.2s ease;
+  }
+  
+  .neuro-hover:hover {
+    box-shadow: 
+      6px 6px 12px var(--neuro-shadow-dark),
+      -6px -6px 12px var(--neuro-shadow-light);
+    transform: translateY(-1px);
+  }
+  
+  .neuro-button {
+    @apply neuro-outset-sm neuro-hover rounded-2xl bg-neuro-element text-neuro-text-primary;
+    border: none;
+    transition: all 0.2s ease;
+    font-weight: 600; /* Fonte mais pesada para botões */
+  }
+  
+  .neuro-button:active {
+    @apply neuro-pressed;
+    transform: translateY(1px);
+  }
+  
+  .neuro-card {
+    @apply neuro-outset rounded-3xl bg-neuro-surface;
+  }
+  
+  .neuro-input {
+    @apply neuro-inset rounded-2xl bg-neuro-element text-neuro-text-primary;
+    border: none;
+    font-weight: 500;
+  }
+  
+  .neuro-input:focus {
+    outline: none;
+    box-shadow: 
+      inset 6px 6px 12px var(--neuro-shadow-dark),
+      inset -6px -6px 12px var(--neuro-shadow-light),
+      0 0 0 3px rgba(var(--neuro-accent), 0.2);
+  }
+}
+
+/* Custom colors - Atualizado para usar as cores dinâmicas */
+@layer utilities {
+  .bg-neuro-bg { background-color: rgb(var(--neuro-bg)); }
+  .bg-neuro-surface { background-color: rgb(var(--neuro-surface)); }
+  .bg-neuro-element { background-color: rgb(var(--neuro-element)); }
+  .bg-neuro-calendar-header { background-color: rgb(var(--neuro-calendar-header)); }
+  .text-neuro-text-primary { color: rgb(var(--neuro-text-primary)); }
+  .text-neuro-text-secondary { color: rgb(var(--neuro-text-secondary)); }
+  .text-neuro-text-muted { color: rgb(var(--neuro-text-muted)); }
+  .text-neuro-accent { color: rgb(var(--neuro-accent)); }
+  .text-neuro-calendar-weekend { color: rgb(var(--neuro-calendar-weekend)); }
+  .text-neuro-calendar-weekday { color: rgb(var(--neuro-calendar-weekday)); }
+  .text-neuro-calendar-event { color: rgb(var(--neuro-calendar-event)); }
+  .text-neuro-calendar-routine { color: rgb(var(--neuro-calendar-routine)); }
+  .bg-neuro-accent { background-color: rgb(var(--neuro-accent)); }
+  .bg-neuro-success { background-color: rgb(var(--neuro-success)); }
+  .bg-neuro-warning { background-color: rgb(var(--neuro-warning)); }
+  .bg-neuro-error { background-color: rgb(var(--neuro-error)); }
+  .bg-neuro-calendar-weekend { background-color: rgb(var(--neuro-calendar-weekend)); }
+  .bg-neuro-calendar-weekday { background-color: rgb(var(--neuro-calendar-weekday)); }
+  .bg-neuro-calendar-event { background-color: rgb(var(--neuro-calendar-event)); }
+  .bg-neuro-calendar-routine { background-color: rgb(var(--neuro-calendar-routine)); }
+}
+
+/* Typography improvements */
+@layer utilities {
+  .text-strong {
+    font-weight: 600;
+    color: rgb(var(--neuro-text-primary));
+  }
+  
+  .text-medium {
+    font-weight: 500;
+    color: rgb(var(--neuro-text-secondary));
+  }
+  
+  .text-light {
+    font-weight: 400;
+    color: rgb(var(--neuro-text-muted));
+  }
+}
+
+/* Hide Lovable badge */
+a[href*="lovable.dev"], 
+iframe[src*="lovable.dev"], 
+div[style*="Editar com Lovable"], 
+.emblema-adorável { 
+ display: none !important; 
+ opacity: 0 !important; 
+ visibility: hidden !important; 
+ pointer-events: none !important; 
+ position: absolute !important; 
+ z-index: -9999 !important; 
+}
