@@ -76,18 +76,19 @@ const FullScreenSchedule: React.FC<FullScreenScheduleProps> = ({ onClose }) => {
     return (
         <div className="fixed inset-0 z-[100] bg-white flex flex-col">
             {/* Header minimalista para sair */}
-            <div className="bg-blue-900 text-white px-4 py-2 flex items-center justify-between shadow-md shrink-0 h-12">
-                <h1 className="text-lg font-bold tracking-wider uppercase flex-1 text-center">
+            {/* Header com estilo PWA (Azul Escuro Profundo) */}
+            <div className="bg-[#1a365d] text-white px-4 py-3 flex items-center justify-between shadow-lg shrink-0 z-[101]">
+                <h1 className="text-xl font-bold tracking-wider uppercase flex-1 text-center font-mono">
                     {MONTHS[month]} {year}
                 </h1>
                 <Button
                     variant="ghost"
                     size="sm"
-                    className="text-white hover:bg-blue-800 hover:text-white absolute right-4 top-2"
+                    className="text-white hover:bg-white/20 active:bg-white/30 absolute right-4 top-3"
                     onClick={onClose}
                 >
-                    <span className="mr-2 hidden sm:inline">Sair</span>
-                    <X className="h-5 w-5" />
+                    <span className="mr-2 font-bold uppercase">Sair</span>
+                    <X className="h-6 w-6" />
                 </Button>
             </div>
 
@@ -143,14 +144,18 @@ const FullScreenSchedule: React.FC<FullScreenScheduleProps> = ({ onClose }) => {
                             })}
                         </tr>
 
-                        {/* Linhas de Funcionários */}
+                        // Linhas de Funcionários
                         {employees.filter(employee => {
-                            // Show if active OR has shifts in this month
+                            // Show if active OR has shifts in THIS month
                             const isActive = employee.active !== false;
-                            const hasShifts = shifts.some(s => s.employeeId === employee.id);
-                            return isActive || hasShifts;
+                            const currentMonthPrefix = `${year}-${(month + 1).toString().padStart(2, '0')}`;
+                            const hasShiftsInMonth = shifts.some(s => s.employeeId === employee.id && s.date.startsWith(currentMonthPrefix));
+
+                            // If active, always show. If inactive, only show if they worked this month.
+                            return isActive || hasShiftsInMonth;
                         })
-                            .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
+                            // Sort by name since displayOrder is currently disabled/unreliable
+                            .sort((a, b) => a.name.localeCompare(b.name))
                             .map((employee: any, empIndex: number) => (
                                 <tr key={employee.id} className={cn(empIndex % 2 === 0 ? "bg-white" : "bg-blue-50/30")}>
                                     <th className="sticky left-0 z-10 bg-blue-100 text-blue-900 min-w-[150px] p-2 border-r border-b border-blue-200 text-xs font-bold uppercase shadow-sm">
