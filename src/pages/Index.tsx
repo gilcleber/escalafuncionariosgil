@@ -8,6 +8,7 @@ import ScheduleSettings from '@/components/ScheduleSettings';
 import ScheduleReports from '@/components/ScheduleReports';
 import { Calendar, Users, Settings, BarChart3 } from 'lucide-react';
 import { useSchedule } from '@/contexts/ScheduleContextSupabase';
+import MainToolbar from '@/components/MainToolbar';
 
 // Componente para preview do perfil da empresa com design neuromórfico
 const CompanyPreview: React.FC = () => {
@@ -88,8 +89,13 @@ const IndexContent = () => {
   return (
     <div className="min-h-screen bg-neuro-bg">
       <div className="container mx-auto px-6 py-12">
+
+        // ...
         {/* Header com preview da empresa */}
         <CompanyPreview />
+
+        {/* Main Toolbar (new) */}
+        <MainToolbar />
 
         {/* Stats Cards - Only show in edit mode */}
         {!isViewOnly && <ScheduleHeader />}
