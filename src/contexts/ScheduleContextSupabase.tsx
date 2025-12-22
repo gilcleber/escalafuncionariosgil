@@ -30,6 +30,9 @@ interface ScheduleContextType {
   isSaving: boolean;
   updateEmployeeWorkRule: (employeeId: string, workScale: WorkScale, customRules?: Partial<WorkRule>) => void;
   getEmployeeWorkRule: (employeeId: string) => EmployeeWorkRule | undefined;
+  archiveEmployee: (id: string, date: string) => void;
+  restoreEmployee: (id: string) => void;
+  reorderEmployees: (items: { id: string; displayOrder: number }[]) => void;
 }
 
 const ScheduleContext = createContext<ScheduleContextType | undefined>(undefined);
@@ -48,7 +51,7 @@ interface ScheduleProviderProps {
 
 export const ScheduleProvider: React.FC<ScheduleProviderProps> = ({ children }) => {
   // --- New Independent Hooks ---
-  const { employees, loadingEmployees, addEmployee, updateEmployee, deleteEmployee } = useEmployees();
+  const { employees, loadingEmployees, addEmployee, updateEmployee, deleteEmployee, archiveEmployee, restoreEmployee, reorderEmployees } = useEmployees();
   const { shifts, loadingShifts, addShift, updateShift, deleteShift, createShiftWithAutoEndTime } = useShifts();
   const { settings, loadingSettings, updateSettings, addEvent, updateEvent, deleteEvent, addCustomHoliday, removeCustomHoliday, addEmployeeRoutine, updateEmployeeRoutine, deleteEmployeeRoutine, updateEmployeeWorkRule, getEmployeeWorkRule } = useSettings();
 
@@ -87,6 +90,8 @@ export const ScheduleProvider: React.FC<ScheduleProviderProps> = ({ children }) 
       saveScheduleData: () => console.log("Auto-save is active per entity."),
 
       addEmployee, updateEmployee, deleteEmployee,
+      archiveEmployee, restoreEmployee, reorderEmployees,
+
       addShift, updateShift, deleteShift, createShiftWithAutoEndTime,
 
       setCurrentMonth: (m, y) => setCurrentDate({ month: m, year: y }),

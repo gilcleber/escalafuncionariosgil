@@ -7,6 +7,8 @@ export interface Employee {
   defaultShift: string;
   workScale?: WorkScale;
   active?: boolean;
+  endDate?: string | null;
+  displayOrder?: number;
 }
 
 export interface Shift {

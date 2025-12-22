@@ -152,24 +152,26 @@ const FullScreenSchedule: React.FC<FullScreenScheduleProps> = ({ onClose }) => {
                             const isActive = employee.active !== false;
                             const hasShifts = shifts.some(s => s.employeeId === employee.id);
                             return isActive || hasShifts;
-                        }).map((employee: any, empIndex: number) => (
-                            <tr key={employee.id} className={cn(empIndex % 2 === 0 ? "bg-white" : "bg-blue-50/30")}>
-                                <th className="sticky left-0 z-10 bg-blue-100 text-blue-900 min-w-[150px] p-2 border-r border-b border-blue-200 text-xs font-bold uppercase shadow-sm">
-                                    {employee.name}
-                                </th>
-                                {Array.from({ length: daysInMonth }, (_, i) => {
-                                    const day = i + 1;
-                                    const dateStr = formatDate(day);
-                                    const shifts = getShifts(employee.id, dateStr);
+                        })
+                            .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
+                            .map((employee: any, empIndex: number) => (
+                                <tr key={employee.id} className={cn(empIndex % 2 === 0 ? "bg-white" : "bg-blue-50/30")}>
+                                    <th className="sticky left-0 z-10 bg-blue-100 text-blue-900 min-w-[150px] p-2 border-r border-b border-blue-200 text-xs font-bold uppercase shadow-sm">
+                                        {employee.name}
+                                    </th>
+                                    {Array.from({ length: daysInMonth }, (_, i) => {
+                                        const day = i + 1;
+                                        const dateStr = formatDate(day);
+                                        const shifts = getShifts(employee.id, dateStr);
 
-                                    return (
-                                        <td key={day} className="border border-gray-200 p-1 h-[60px] align-middle hover:bg-gray-50 transition-colors">
-                                            {renderShiftContent(shifts)}
-                                        </td>
-                                    );
-                                })}
-                            </tr>
-                        ))}
+                                        return (
+                                            <td key={day} className="border border-gray-200 p-1 h-[60px] align-middle hover:bg-gray-50 transition-colors">
+                                                {renderShiftContent(shifts)}
+                                            </td>
+                                        );
+                                    })}
+                                </tr>
+                            ))}
                     </tbody>
                 </table>
             </div>
