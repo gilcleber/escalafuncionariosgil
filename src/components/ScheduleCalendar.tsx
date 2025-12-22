@@ -13,6 +13,8 @@ import GameEditModal from './GameEditModal';
 import RoutineEditModal from './RoutineEditModal';
 import CalendarViewSelector, { CalendarViewType } from './CalendarViewSelector';
 import CalendarCompactView from './CalendarCompactView';
+import FullScreenSchedule from './FullScreenSchedule';
+
 
 interface ScheduleCalendarProps {
   isEmployeeView?: boolean;
@@ -705,15 +707,7 @@ const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
     );
 
     if (calendarView === 'fullscreen') {
-      return (
-        <div className="fixed inset-0 z-50 bg-background overflow-auto p-4 flex flex-col">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold">Modo Tela Cheia - {MONTHS[currentMonth]} {currentYear}</h2>
-            <Button onClick={() => setCalendarView('weekly')}>Sair do Modo Tela Cheia</Button>
-          </div>
-          <WeeklyGrid />
-        </div>
-      );
+      return <FullScreenSchedule onClose={() => setCalendarView('weekly')} />;
     }
 
     return <WeeklyGrid />;
