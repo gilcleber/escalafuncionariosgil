@@ -13,7 +13,17 @@ import CustomWorkScales from './CustomWorkScales';
 import EventsSettings from './EventsSettings';
 
 const ScheduleSettings = () => {
-  const { scheduleData, updateSettings } = useSchedule();
+  const { scheduleData, isLoading } = useSchedule();
+
+  // Safe guard: Ensure settings exist before rendering
+  if (isLoading || !scheduleData?.settings) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neuro-accent"></div>
+        <span className="ml-2 text-neuro-text-secondary">Carregando configurações...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -36,36 +46,36 @@ const ScheduleSettings = () => {
       <div className="neuro-card p-6">
         <Tabs defaultValue="company" className="w-full">
           <TabsList className="grid w-full grid-cols-5 mb-8 neuro-outset bg-neuro-surface p-2 rounded-3xl">
-            <TabsTrigger 
-              value="company" 
+            <TabsTrigger
+              value="company"
               className="flex items-center gap-2 rounded-2xl transition-all duration-200 data-[state=active]:neuro-inset data-[state=active]:bg-neuro-element data-[state=active]:text-neuro-text-primary text-neuro-text-secondary hover:text-neuro-text-primary font-medium"
             >
               <Building className="h-4 w-4" />
               <span className="hidden sm:inline">Empresa</span>
             </TabsTrigger>
-            <TabsTrigger 
-              value="events" 
+            <TabsTrigger
+              value="events"
               className="flex items-center gap-2 rounded-2xl transition-all duration-200 data-[state=active]:neuro-inset data-[state=active]:bg-neuro-element data-[state=active]:text-neuro-text-primary text-neuro-text-secondary hover:text-neuro-text-primary font-medium"
             >
               <Calendar className="h-4 w-4" />
               <span className="hidden sm:inline">Eventos</span>
             </TabsTrigger>
-            <TabsTrigger 
-              value="work-rules" 
+            <TabsTrigger
+              value="work-rules"
               className="flex items-center gap-2 rounded-2xl transition-all duration-200 data-[state=active]:neuro-inset data-[state=active]:bg-neuro-element data-[state=active]:text-neuro-text-primary text-neuro-text-secondary hover:text-neuro-text-primary font-medium"
             >
               <Clock className="h-4 w-4" />
               <span className="hidden sm:inline">Regras</span>
             </TabsTrigger>
-            <TabsTrigger 
-              value="work-scales" 
+            <TabsTrigger
+              value="work-scales"
               className="flex items-center gap-2 rounded-2xl transition-all duration-200 data-[state=active]:neuro-inset data-[state=active]:bg-neuro-element data-[state=active]:text-neuro-text-primary text-neuro-text-secondary hover:text-neuro-text-primary font-medium"
             >
               <Users2 className="h-4 w-4" />
               <span className="hidden sm:inline">Escalas</span>
             </TabsTrigger>
-            <TabsTrigger 
-              value="reports" 
+            <TabsTrigger
+              value="reports"
               className="flex items-center gap-2 rounded-2xl transition-all duration-200 data-[state=active]:neuro-inset data-[state=active]:bg-neuro-element data-[state=active]:text-neuro-text-primary text-neuro-text-secondary hover:text-neuro-text-primary font-medium"
             >
               <FileText className="h-4 w-4" />
@@ -123,7 +133,7 @@ const ReportSettings = () => {
       timestamp: new Date().toISOString(),
       reportType: 'configuration'
     };
-    
+
     if (settings.exportFormat === 'pdf') {
       // Gerar PDF
       const htmlContent = `
@@ -144,7 +154,7 @@ const ReportSettings = () => {
           <p><em>Relatório gerado em: ${new Date().toLocaleString('pt-BR')}</em></p>
         </div>
       `;
-      
+
       const printWindow = window.open('', '_blank');
       if (printWindow) {
         printWindow.document.write(`
@@ -176,7 +186,7 @@ Mostrar detalhes por hora,${settings.showHourlyDetails ? 'Sim' : 'Não'}
 Formato de exportação,${settings.exportFormat.toUpperCase()}
 Data de geração,${new Date().toLocaleString('pt-BR')}
       `;
-      
+
       const blob = new Blob([csvContent], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -185,7 +195,7 @@ Data de geração,${new Date().toLocaleString('pt-BR')}
       a.click();
       window.URL.revokeObjectURL(url);
     }
-    
+
     alert('Relatório exportado com sucesso!');
   };
 
@@ -203,28 +213,28 @@ Data de geração,${new Date().toLocaleString('pt-BR')}
           <h3 className="text-lg font-semibold mb-4 text-neuro-text-primary">Conteúdo dos Relatórios</h3>
           <div className="space-y-3">
             <label className="flex items-center gap-3">
-              <input 
-                type="checkbox" 
+              <input
+                type="checkbox"
                 checked={settings.includeWeekends}
-                onChange={(e) => setSettings({...settings, includeWeekends: e.target.checked})}
+                onChange={(e) => setSettings({ ...settings, includeWeekends: e.target.checked })}
                 className="neuro-input w-4 h-4"
               />
               <span className="text-neuro-text-primary font-medium">Incluir fins de semana</span>
             </label>
             <label className="flex items-center gap-3">
-              <input 
-                type="checkbox" 
+              <input
+                type="checkbox"
                 checked={settings.includeHolidays}
-                onChange={(e) => setSettings({...settings, includeHolidays: e.target.checked})}
+                onChange={(e) => setSettings({ ...settings, includeHolidays: e.target.checked })}
                 className="neuro-input w-4 h-4"
               />
               <span className="text-neuro-text-primary font-medium">Incluir feriados</span>
             </label>
             <label className="flex items-center gap-3">
-              <input 
-                type="checkbox" 
+              <input
+                type="checkbox"
                 checked={settings.showHourlyDetails}
-                onChange={(e) => setSettings({...settings, showHourlyDetails: e.target.checked})}
+                onChange={(e) => setSettings({ ...settings, showHourlyDetails: e.target.checked })}
                 className="neuro-input w-4 h-4"
               />
               <span className="text-neuro-text-primary font-medium">Mostrar detalhes por hora</span>
@@ -236,34 +246,34 @@ Data de geração,${new Date().toLocaleString('pt-BR')}
           <h3 className="text-lg font-semibold mb-4 text-neuro-text-primary">Formato de Exportação</h3>
           <div className="space-y-3">
             <label className="flex items-center gap-3">
-              <input 
-                type="radio" 
+              <input
+                type="radio"
                 name="exportFormat"
                 value="pdf"
                 checked={settings.exportFormat === 'pdf'}
-                onChange={(e) => setSettings({...settings, exportFormat: e.target.value})}
+                onChange={(e) => setSettings({ ...settings, exportFormat: e.target.value })}
                 className="neuro-input w-4 h-4"
               />
               <span className="text-neuro-text-primary font-medium">PDF</span>
             </label>
             <label className="flex items-center gap-3">
-              <input 
-                type="radio" 
+              <input
+                type="radio"
                 name="exportFormat"
                 value="excel"
                 checked={settings.exportFormat === 'excel'}
-                onChange={(e) => setSettings({...settings, exportFormat: e.target.value})}
+                onChange={(e) => setSettings({ ...settings, exportFormat: e.target.value })}
                 className="neuro-input w-4 h-4"
               />
               <span className="text-neuro-text-primary font-medium">Excel</span>
             </label>
             <label className="flex items-center gap-3">
-              <input 
-                type="radio" 
+              <input
+                type="radio"
                 name="exportFormat"
                 value="csv"
                 checked={settings.exportFormat === 'csv'}
-                onChange={(e) => setSettings({...settings, exportFormat: e.target.value})}
+                onChange={(e) => setSettings({ ...settings, exportFormat: e.target.value })}
                 className="neuro-input w-4 h-4"
               />
               <span className="text-neuro-text-primary font-medium">CSV</span>
@@ -273,7 +283,7 @@ Data de geração,${new Date().toLocaleString('pt-BR')}
       </div>
 
       <div className="flex justify-end">
-        <Button 
+        <Button
           onClick={handleExportReport}
           className="neuro-button text-neuro-text-primary font-semibold"
         >

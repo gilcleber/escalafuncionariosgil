@@ -59,11 +59,12 @@ export const ScheduleProvider: React.FC<ScheduleProviderProps> = ({ children }) 
   const [currentDate, setCurrentDate] = useState({ month: new Date().getMonth(), year: new Date().getFullYear() });
 
   // Construct the monolithic 'scheduleData' object for backward compatibility
+  // Construct the monolithic 'scheduleData' object for backward compatibility
   const scheduleData: ScheduleData = {
     ...createDefaultScheduleData(),
-    employees,
-    shifts,
-    settings,
+    employees: employees || [],
+    shifts: shifts || [],
+    settings: settings || createDefaultScheduleData().settings,
     month: currentDate.month,
     year: currentDate.year
   };
