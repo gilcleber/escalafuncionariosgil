@@ -7,10 +7,22 @@ export const importBackupData = async (jsonData: any): Promise<{ success: boolea
     const failures: string[] = [];
 
     try {
-        // 1. Get Current User
-        const { data: { user } } = await supabase.auth.getUser();
+        // 1. Get Current User or Sign In Anonymously
+        let { data: { user } } = await supabase.auth.getUser();
+
         if (!user) {
-            return { success: false, message: 'Usuário não autenticado no Supabase.', failures: ['Auth Error'] };
+            console.log("Usuário não logado. Tentando login anônimo...");
+            const { data: anonData, error: anonError } = await supabase.auth.signInAnonymously();
+
+            if (anonError || !anonData.user) {
+                console.error("Falha no login anônimo:", anonError);
+                return {
+                    success: false,
+                    message: 'Erro de Autenticação: O sistema exige um usuário válido.\n\nSe o Login Anônimo não estiver ativado no Supabase, você precisará implementar o Login por Email.',
+                    failures: [anonError?.message || 'Anonymous login returned no user']
+                };
+            }
+            user = anonData.user;
         }
 
         const userId = user.id;
