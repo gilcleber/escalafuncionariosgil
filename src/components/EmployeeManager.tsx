@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
-import { Plus, Edit2, Trash2, Users, ArrowUp, ArrowDown, RotateCcw, Archive, Download } from 'lucide-react';
+import { Plus, Edit2, Trash2, Users, ArrowUp, ArrowDown, RotateCcw, Archive, Download, Upload } from 'lucide-react';
 import { useSchedule } from '@/contexts/ScheduleContextSupabase';
 import { Employee } from '@/types/employee';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { importBackupData } from '@/services/importService';
 
 const EmployeeManager = () => {
   const { scheduleData, addEmployee, updateEmployee, deleteEmployee, archiveEmployee, restoreEmployee, reorderEmployees } = useSchedule();
@@ -19,6 +20,9 @@ const EmployeeManager = () => {
   const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false);
   const [employeeToArchive, setEmployeeToArchive] = useState<string | null>(null);
   const [archiveDate, setArchiveDate] = useState('');
+
+  // Import State
+  const [isImporting, setIsImporting] = useState(false);
 
   const handleAddEmployee = () => {
     if (newEmployee.name.trim()) {
@@ -100,15 +104,71 @@ const EmployeeManager = () => {
     linkElement.click();
   };
 
+  const handleImportBackup = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!confirm('ATENÇÃO: Importar um backup irá SOBRESCREVER ou ATUALIZAR os dados existentes.\n\nRecomendamos exportar um backup atual antes de continuar.\n\nDeseja prosseguir?')) {
+      event.target.value = ''; // Reset input
+      return;
+    }
+
+    setIsImporting(true);
+    const reader = new FileReader();
+
+    reader.onload = async (e) => {
+      try {
+        const jsonContent = e.target?.result as string;
+        const parsedData = JSON.parse(jsonContent);
+
+        const result = await importBackupData(parsedData);
+
+        if (result.success) {
+          alert(result.message);
+          window.location.reload(); // Reload to refresh data from Supabase
+        } else {
+          alert(`Erro na importação:\n${result.message}\n\nDetalhes:\n${result.failures.join('\n')}`);
+        }
+      } catch (error) {
+        alert('Erro ao ler arquivo: O formato não é um JSON válido.');
+        console.error(error);
+      } finally {
+        setIsImporting(false);
+        // Reset input
+        if (event.target) event.target.value = '';
+      }
+    };
+
+    reader.readAsText(file);
+  };
+
   return (
     <div className="space-y-8">
       {/* Header */}
       <div className="neuro-card p-8 text-center relative">
-        <div className="absolute top-4 right-4">
+        <div className="absolute top-4 right-4 flex gap-2">
+          <div className="relative">
+            <Input
+              type="file"
+              accept=".json"
+              onChange={handleImportBackup}
+              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-20"
+              disabled={isImporting}
+            />
+            <Button
+              variant="outline"
+              className="flex items-center gap-2 relative z-10"
+              disabled={isImporting}
+            >
+              <Upload className="h-4 w-4" />
+              {isImporting ? 'Importando...' : 'Importar Backup'}
+            </Button>
+          </div>
           <Button
             onClick={handleExportBackup}
             variant="outline"
             className="flex items-center gap-2"
+            disabled={isImporting}
           >
             <Download className="h-4 w-4" /> Exportar Backup
           </Button>
