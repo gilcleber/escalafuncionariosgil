@@ -74,33 +74,30 @@ const FullScreenSchedule: React.FC<FullScreenScheduleProps> = ({ onClose }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-[100] bg-white flex flex-col overflow-hidden">
-            {/* HEADER AZUL */}
-            <div className="bg-blue-900 text-white p-2 flex items-center justify-between shadow-md shrink-0 h-14">
-                <div className="flex items-center gap-4">
-                    {/* Placeholder for left side controls if any */}
-                </div>
-                <h1 className="text-xl font-bold tracking-wider uppercase">
+        <div className="fixed inset-0 z-[100] bg-white flex flex-col">
+            {/* Header minimalista para sair */}
+            <div className="bg-blue-900 text-white px-4 py-2 flex items-center justify-between shadow-md shrink-0 h-12">
+                <h1 className="text-lg font-bold tracking-wider uppercase flex-1 text-center">
                     {MONTHS[month]} {year}
-                    {/* Note: User wanted 'DEZEMBRO 2025 - JANEIRO 2026', we can logic this later if needed, mostly it's single month context */}
                 </h1>
                 <Button
                     variant="ghost"
-                    className="text-white hover:bg-blue-800 hover:text-white"
+                    size="sm"
+                    className="text-white hover:bg-blue-800 hover:text-white absolute right-4 top-2"
                     onClick={onClose}
                 >
-                    <span className="mr-2">Sair do Modo Tela Cheia</span>
+                    <span className="mr-2 hidden sm:inline">Sair</span>
                     <X className="h-5 w-5" />
                 </Button>
             </div>
 
-            {/* Tabela com Scroll Horizontal e Vertical */}
+            {/* Tabela Full Width sem margens */}
             <div className="flex-1 overflow-auto bg-white">
-                <table className="w-max min-w-full border-collapse">
+                <table className="w-full border-collapse">
                     <thead className="sticky top-0 z-20 bg-white shadow-sm">
                         <tr>
                             {/* Coluna Fixa: FUNCS. */}
-                            <th className="sticky left-0 z-30 bg-blue-800 text-white min-w-[150px] p-2 border border-blue-900 text-xs font-bold uppercase tracking-wider shadow-md">
+                            <th className="sticky left-0 z-30 bg-blue-800 text-white w-[150px] min-w-[150px] p-2 border border-blue-900 text-xs font-bold uppercase tracking-wider shadow-md">
                                 FUNCS.
                             </th>
                             {/* Dias do Mês */}
@@ -113,7 +110,7 @@ const FullScreenSchedule: React.FC<FullScreenScheduleProps> = ({ onClose }) => {
                                 const headerColor = getDayHeaderColor(dateObj, !!isHol);
 
                                 return (
-                                    <th key={day} className={cn("min-w-[100px] p-1 border border-gray-300 text-center", headerColor)}>
+                                    <th key={day} className={cn("min-w-[60px] p-1 border border-gray-300 text-center", headerColor)}>
                                         <div className="flex flex-col items-center justify-center leading-tight">
                                             <span className="text-[10px] font-medium uppercase">{WEEKDAYS[dayOfWeek]}</span>
                                             <span className="text-lg font-bold">{day.toString().padStart(2, '0')}</span>
@@ -135,7 +132,7 @@ const FullScreenSchedule: React.FC<FullScreenScheduleProps> = ({ onClose }) => {
                                 const events = getEvents(dateStr);
 
                                 return (
-                                    <td key={day} className="border border-gray-200 p-1 align-top bg-white/50 h-[50px]">
+                                    <td key={day} className="border border-gray-200 p-1 align-top bg-white/50 h-[40px]">
                                         {events.map((ev: any, idx: number) => (
                                             <div key={idx} className="bg-black text-white text-[9px] font-bold px-1 py-0.5 rounded mb-1 text-center truncate">
                                                 {ev.name} {ev.time}
@@ -165,7 +162,7 @@ const FullScreenSchedule: React.FC<FullScreenScheduleProps> = ({ onClose }) => {
                                         const shifts = getShifts(employee.id, dateStr);
 
                                         return (
-                                            <td key={day} className="border border-gray-200 p-1 h-[60px] align-middle hover:bg-gray-50 transition-colors">
+                                            <td key={day} className="border border-gray-200 p-0 h-[50px] align-middle hover:bg-gray-50 transition-colors relative">
                                                 {renderShiftContent(shifts)}
                                             </td>
                                         );
@@ -174,14 +171,6 @@ const FullScreenSchedule: React.FC<FullScreenScheduleProps> = ({ onClose }) => {
                             ))}
                     </tbody>
                 </table>
-            </div>
-
-            {/* Legenda Fixa no Rodapé (Opcional, based on mockup) */}
-            <div className="bg-gray-100 p-2 border-t border-gray-300 flex items-center justify-center gap-4 text-[10px] text-gray-600 shrink-0">
-                <div className="flex items-center gap-1"><div className="w-3 h-3 bg-white border border-blue-200 rounded-full"></div> Trabalho</div>
-                <div className="flex items-center gap-1"><div className="w-3 h-3 bg-yellow-100 border border-yellow-200 rounded-full"></div> Folga</div>
-                <div className="flex items-center gap-1"><div className="w-3 h-3 bg-green-100 border border-green-200 rounded-full"></div> Férias</div>
-                <span>| &copy; Escala Funcionários</span>
             </div>
         </div>
     );
