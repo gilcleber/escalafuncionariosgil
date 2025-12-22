@@ -3,7 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Calendar, Grid3x3 } from 'lucide-react';
 
-export type CalendarViewType = 'weekly' | 'compact';
+export type CalendarViewType = 'weekly' | 'compact' | 'fullscreen';
 
 interface CalendarViewSelectorProps {
   currentView: CalendarViewType;
@@ -23,7 +23,7 @@ const CalendarViewSelector: React.FC<CalendarViewSelectorProps> = ({
   return (
     <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-lg">
       <span className="text-sm font-medium text-gray-600">Visualização:</span>
-      
+
       <Button
         variant={currentView === 'weekly' ? 'default' : 'outline'}
         size="sm"
@@ -33,7 +33,7 @@ const CalendarViewSelector: React.FC<CalendarViewSelectorProps> = ({
         <Grid3x3 className="h-4 w-4" />
         Semanal
       </Button>
-      
+
       <Button
         variant={currentView === 'compact' ? 'default' : 'outline'}
         size="sm"
@@ -42,6 +42,16 @@ const CalendarViewSelector: React.FC<CalendarViewSelectorProps> = ({
       >
         <Calendar className="h-4 w-4" />
         Compacto
+      </Button>
+
+      <Button
+        variant={currentView === 'fullscreen' ? 'default' : 'outline'}
+        size="sm"
+        onClick={() => onViewChange('fullscreen')}
+        className="flex items-center gap-1"
+      >
+        <Grid3x3 className="h-4 w-4" />
+        Tela Cheia
       </Button>
     </div>
   );
