@@ -144,7 +144,7 @@ const FullScreenSchedule: React.FC<FullScreenScheduleProps> = ({ onClose }) => {
                             })}
                         </tr>
 
-                        // Linhas de Funcionários
+                        {/* Linhas de Funcionários */}
                         {employees.filter(employee => {
                             // Show if active OR has shifts in THIS month
                             const isActive = employee.active !== false;
