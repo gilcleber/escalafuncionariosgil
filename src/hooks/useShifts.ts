@@ -17,14 +17,17 @@ export const useShifts = () => {
                 return;
             }
 
+            // @ts-ignore
             const { data, error } = await supabase
                 .from('shifts')
                 .select('*')
                 .eq('user_id', userId);
 
+            const shiftsData = (data as any) || [];
+
             if (error) throw error;
 
-            const mappedShifts: Shift[] = data.map(s => ({
+            const mappedShifts: Shift[] = shiftsData.map((s: any) => ({
                 id: s.id,
                 employeeId: s.employee_id,
                 date: s.date,

@@ -16,19 +16,23 @@ export const useEmployees = () => {
                 return;
             }
 
+            // @ts-ignore
             const { data, error } = await supabase
                 .from('employees')
                 .select('*')
-                .eq('user_id', userId)
-                .eq('active', true);
+                .eq('user_id', userId);
+
+            // Cast data to any to avoid "excessively deep" error
+            const typedData = (data as any) || [];
 
             if (error) throw error;
 
-            const mappedEmployees: Employee[] = data.map(emp => ({
+            const mappedEmployees: Employee[] = typedData.map((emp: any) => ({
                 id: emp.id,
                 name: emp.name,
                 position: emp.position,
-                defaultShift: emp.default_shift_template_id || ''
+                defaultShift: emp.default_shift_template_id || '',
+                active: emp.active
             }));
 
             setEmployees(mappedEmployees);

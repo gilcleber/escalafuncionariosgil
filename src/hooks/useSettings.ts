@@ -37,10 +37,14 @@ export const useSettings = () => {
                 .select('*')
                 .eq('user_id', userId);
 
-            // Reconstruct the monolithic settings object
-            const baseSettings = profile?.settings as Partial<ScheduleSettings> || {};
+            const typedProfile = profile as any;
+            const typedTemplates = (templates as any) || [];
+            const typedEvents = (eventsData as any) || [];
 
-            const mappedTemplates: ShiftTemplate[] = (templates || []).map(t => ({
+            // Reconstruct the monolithic settings object
+            const baseSettings = typedProfile?.settings as Partial<ScheduleSettings> || {};
+
+            const mappedTemplates: ShiftTemplate[] = typedTemplates.map((t: any) => ({
                 id: t.id,
                 name: t.name,
                 startTime: t.start_time.slice(0, 5),
@@ -48,16 +52,16 @@ export const useSettings = () => {
                 color: t.color
             }));
 
-            const mappedEvents: Event[] = (eventsData || [])
-                .filter(e => e.type === 'company_event')
-                .map(e => ({
+            const mappedEvents: Event[] = typedEvents
+                .filter((e: any) => e.type === 'company_event')
+                .map((e: any) => ({
                     id: e.id,
                     name: e.name,
                     date: e.date,
                     type: 'company_event'
                 }));
 
-            const mappedHolidays: Holiday[] = (eventsData || [])
+            const mappedHolidays: Holiday[] = typedEvents
                 .filter(e => e.type === 'custom_holiday')
                 .map(e => ({
                     id: e.id,

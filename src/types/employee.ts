@@ -6,6 +6,7 @@ export interface Employee {
   position: string;
   defaultShift: string;
   workScale?: WorkScale;
+  active?: boolean;
 }
 
 export interface Shift {

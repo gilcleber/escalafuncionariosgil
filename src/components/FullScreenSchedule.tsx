@@ -147,7 +147,12 @@ const FullScreenSchedule: React.FC<FullScreenScheduleProps> = ({ onClose }) => {
                         </tr>
 
                         {/* Linhas de Funcionários */}
-                        {employees.map((employee: any, empIndex: number) => (
+                        {employees.filter(employee => {
+                            // Show if active OR has shifts in this month
+                            const isActive = employee.active !== false;
+                            const hasShifts = shifts.some(s => s.employeeId === employee.id);
+                            return isActive || hasShifts;
+                        }).map((employee: any, empIndex: number) => (
                             <tr key={employee.id} className={cn(empIndex % 2 === 0 ? "bg-white" : "bg-blue-50/30")}>
                                 <th className="sticky left-0 z-10 bg-blue-100 text-blue-900 min-w-[150px] p-2 border-r border-b border-blue-200 text-xs font-bold uppercase shadow-sm">
                                     {employee.name}
