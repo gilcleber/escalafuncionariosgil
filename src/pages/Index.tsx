@@ -90,7 +90,6 @@ const IndexContent = () => {
     <div className="min-h-screen bg-neuro-bg">
       <div className="container mx-auto px-6 py-12">
 
-        // ...
         {/* Header com preview da empresa */}
         <CompanyPreview />
 
