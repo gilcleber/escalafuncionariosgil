@@ -9,15 +9,14 @@ export const useSettings = () => {
     const [settings, setSettings] = useState<ScheduleSettings>(createDefaultSettings());
     const [loading, setLoading] = useState(true);
 
-    const getUserId = () => localStorage.getItem('schedule_installation_id');
-
     const fetchSettings = async () => {
         try {
-            const userId = getUserId();
-            if (!userId) {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
                 setLoading(false);
                 return;
             }
+            const userId = user.id;
 
             // 1. Fetch Profile (Company Settings, Rules)
             // @ts-ignore
@@ -101,8 +100,9 @@ export const useSettings = () => {
         // because Events/Templates have their own CRUD.
         // We'll update the local state AND the DB 'profiles.settings' column.
 
-        const userId = getUserId();
-        if (!userId) return;
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const userId = user.id;
 
         try {
             // First, merge with current purely to get the new JSON payload
@@ -149,9 +149,9 @@ export const useSettings = () => {
     };
 
     const addEvent = async (event: Omit<Event, 'id'>) => {
-        const userId = getUserId();
-        if (!userId) return;
-        if (!userId) return;
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const userId = user.id;
         // @ts-ignore
         const { data, error } = await supabase.from('events').insert([{
             user_id: userId, name: event.name, date: event.date, type: 'company_event'
@@ -161,10 +161,9 @@ export const useSettings = () => {
     };
 
     const updateEvent = async (id: string, event: Partial<Event>) => {
-        const userId = getUserId();
-        if (!userId) return;
-
-        if (!userId) return;
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        // const userId = user.id; // Not strict requirement for update if ID is known, but RLS protects it.
 
         // @ts-ignore
         await supabase.from('events').update({
@@ -196,8 +195,9 @@ export const useSettings = () => {
     // Let's try to handle it in updateSettings.
 
     const addCustomHoliday = async (holiday: Holiday) => {
-        const userId = getUserId();
-        if (!userId) return;
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const userId = user.id;
         // @ts-ignore
         const { data } = await supabase.from('events').insert([{
             user_id: userId, name: holiday.name, date: holiday.date, type: 'custom_holiday'
@@ -210,7 +210,9 @@ export const useSettings = () => {
     const removeCustomHoliday = async (date: string) => {
         // Find ID by date? Or delete by date.
         // Supabase allows delete by column.
-        const userId = getUserId();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const userId = user.id;
         // @ts-ignore
         await supabase.from('events').delete().eq('user_id', userId).eq('date', date).eq('type', 'custom_holiday');
         setSettings(prev => ({ ...prev, holidays: prev.holidays?.filter(h => h.date !== date) || [] }));
@@ -284,6 +286,7 @@ export const useSettings = () => {
         deleteEmployeeRoutine,
         updateEmployeeWorkRule,
         getEmployeeWorkRule,
-        setCurrentMonth
+        setCurrentMonth,
+        refetchSettings: fetchSettings
     };
 };

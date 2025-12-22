@@ -8,15 +8,14 @@ export const useShifts = () => {
     const [shifts, setShifts] = useState<Shift[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const getUserId = () => localStorage.getItem('schedule_installation_id');
-
     const fetchShifts = async () => {
         try {
-            const userId = getUserId();
-            if (!userId) {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
                 setLoading(false);
                 return;
             }
+            const userId = user.id;
 
             // @ts-ignore
             const { data, error } = await supabase
@@ -51,8 +50,9 @@ export const useShifts = () => {
     }, []);
 
     const addShift = async (shift: Omit<Shift, 'id'>) => {
-        const userId = getUserId();
-        if (!userId) return;
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const userId = user.id;
 
         try {
             // @ts-ignore
@@ -185,6 +185,7 @@ export const useShifts = () => {
         addShift,
         updateShift,
         deleteShift,
-        createShiftWithAutoEndTime
+        createShiftWithAutoEndTime,
+        refetchShifts: fetchShifts
     };
 };

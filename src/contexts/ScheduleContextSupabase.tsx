@@ -1,4 +1,5 @@
 import React, { createContext, useContext, ReactNode, useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Employee, Shift, ScheduleData, ScheduleSettings, Event, Holiday, WorkScale, WorkRule, EmployeeWorkRule, EmployeeRoutine } from '@/types/employee';
 import { getBrazilianHolidays } from '@/utils/holidays';
 import { useEmployees } from '@/hooks/useEmployees';
@@ -50,15 +51,70 @@ interface ScheduleProviderProps {
 }
 
 export const ScheduleProvider: React.FC<ScheduleProviderProps> = ({ children }) => {
+  // Auth State
+  const [session, setSession] = useState<any>(null);
+
+  useEffect(() => {
+    // 1. Check active session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (!session) {
+        console.log("No session found in Context. Attempting Anonymous Sign-in...");
+        supabase.auth.signInAnonymously().then(({ data, error }) => {
+          if (error) console.error("Auto-Auth Error:", error);
+          else setSession(data.session);
+        });
+      }
+    });
+
+    // 2. Listen for changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   // --- New Independent Hooks ---
-  const { employees, loadingEmployees, addEmployee, updateEmployee, deleteEmployee, archiveEmployee, restoreEmployee, reorderEmployees } = useEmployees();
-  const { shifts, loadingShifts, addShift, updateShift, deleteShift, createShiftWithAutoEndTime } = useShifts();
-  const { settings, loadingSettings, updateSettings, addEvent, updateEvent, deleteEvent, addCustomHoliday, removeCustomHoliday, addEmployeeRoutine, updateEmployeeRoutine, deleteEmployeeRoutine, updateEmployeeWorkRule, getEmployeeWorkRule } = useSettings();
+  // We pass 'session?.user?.id' as a dependency to the hooks if we modified them, 
+  // but since we didn't Mod them to take arguments, we rely on them checking supabase.auth.getUser().
+  // PROBLEM: Their useEffect([]) runs once. They need to re-run when session changes.
+  // We need to modify the hooks to export a 'refetch' and call it, OR modify them to depend on an event.
+  // The cleanest way (Frankenstein fix) is to pass 'session' to them if we could.
+  // Since we can't easily change signatures without breaking other calls (though only used here), 
+  // Let's modify the hooks to listen to Auth State too? 
+  // No, that's redundant.
+  // Let's passed 'session' ID to the hooks? 
+  // Yes, I will update the hooks to accept 'userId'? 
+  // No, I'll update the hooks to listen to onAuthStateChange.
+
+  // Actually, I can just force a re-render of this Provider when session changes?
+  // Use 'key={session?.user?.id}' on ... wait, hooks are above.
+
+  // Okay, plan: Modify hooks to `useEffect(() => { fetch() }, [authChanged])`?
+  // Let's modify hooks to accept `session` or listen to `supabase` auth.
+
+  // Let's ASSUME I update the hooks next. For now, let's implement the Auth logic here.
+
+  const { employees, loadingEmployees, addEmployee, updateEmployee, deleteEmployee, archiveEmployee, restoreEmployee, reorderEmployees, refetchEmployees } = useEmployees();
+  const { shifts, loadingShifts, addShift, updateShift, deleteShift, createShiftWithAutoEndTime, refetchShifts } = useShifts();
+  const { settings, loadingSettings, updateSettings, addEvent, updateEvent, deleteEvent, addCustomHoliday, removeCustomHoliday, addEmployeeRoutine, updateEmployeeRoutine, deleteEmployeeRoutine, updateEmployeeWorkRule, getEmployeeWorkRule, refetchSettings } = useSettings();
+
+  // Trigger Refetch when Session becomes available
+  useEffect(() => {
+    if (session?.user) {
+      console.log("Session active. Refetching all data...", session.user.id);
+      refetchEmployees?.();
+      refetchShifts?.();
+      refetchSettings?.();
+    }
+  }, [session]);
 
   // Local State for Month/Year (UI Only)
   const [currentDate, setCurrentDate] = useState({ month: new Date().getMonth(), year: new Date().getFullYear() });
 
-  // Construct the monolithic 'scheduleData' object for backward compatibility
   // Construct the monolithic 'scheduleData' object for backward compatibility
   const scheduleData: ScheduleData = {
     ...createDefaultScheduleData(),
@@ -69,17 +125,13 @@ export const ScheduleProvider: React.FC<ScheduleProviderProps> = ({ children }) 
     year: currentDate.year
   };
 
-  const isLoading = loadingEmployees || loadingShifts || loadingSettings;
+  const isLoading = (loadingEmployees || loadingShifts || loadingSettings) && !session;
 
   // Sync Holidays (National)
   useEffect(() => {
     if (isLoading) return;
     const nationalHolidays = getBrazilianHolidays(currentDate.year);
-    // Note: We don't save national holidays to DB anymore in this loop to avoid spam.
-    // They are computed. But if the UI needs them in 'settings.holidays', we inject them here.
     const customHolidays = settings.holidays || [];
-    // Just a derived view. 'scheduleData.settings.holidays'
-    // Override the settings object on the fly?
     scheduleData.settings.holidays = [...nationalHolidays, ...customHolidays];
   }, [currentDate.year, isLoading, settings.holidays]);
 
@@ -87,7 +139,7 @@ export const ScheduleProvider: React.FC<ScheduleProviderProps> = ({ children }) 
     <ScheduleContext.Provider value={{
       scheduleData,
       isLoading,
-      isSaving: false, // No longer "saving whole file"
+      isSaving: false,
       saveScheduleData: () => console.log("Auto-save is active per entity."),
 
       addEmployee, updateEmployee, deleteEmployee,

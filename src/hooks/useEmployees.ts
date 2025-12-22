@@ -7,15 +7,14 @@ export const useEmployees = () => {
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const getUserId = () => localStorage.getItem('schedule_installation_id');
-
     const fetchEmployees = async () => {
         try {
-            const userId = getUserId();
-            if (!userId) {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
                 setLoading(false);
                 return;
             }
+            const userId = user.id;
 
 
             // @ts-ignore
@@ -54,8 +53,9 @@ export const useEmployees = () => {
     }, []);
 
     const addEmployee = async (employee: Omit<Employee, 'id'>) => {
-        const userId = getUserId();
-        if (!userId) return;
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const userId = user.id;
 
         try {
             // Calculate next display order
@@ -101,6 +101,7 @@ export const useEmployees = () => {
             if (employee.defaultShift !== undefined) updates.default_shift_template_id = employee.defaultShift || null;
             if (employee.displayOrder !== undefined) updates.display_order = employee.displayOrder;
 
+            // RLS handles user check, but good to be explicit or just call update
             // @ts-ignore
             const { error } = await supabase
                 .from('employees')
@@ -119,15 +120,6 @@ export const useEmployees = () => {
     };
 
     const deleteEmployee = async (id: string) => {
-        // Physical delete or permanent remove? User said "Excluir" exists.
-        // Legacy "Excluir" might have been soft or hard.
-        // User request says "Botões: ..., excluir". 
-        // Existing code did soft delete (active=false). 
-        // User request says "Botões: ... editar, RESTAURAR (em vez de arquivar), excluir."
-        // This implies "Excluir" is DIFFERENT from "Arquivar".
-        // "Arquivar" -> active=false, end_date=date.
-        // "Excluir" -> PERMANENT DELETE (remove from DB).
-
         try {
             // @ts-ignore
             const { error } = await supabase
