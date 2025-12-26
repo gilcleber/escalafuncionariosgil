@@ -189,6 +189,7 @@ export const importBackupData = async (jsonData: any): Promise<{ success: boolea
                 };
             });
 
+            console.log("DEBUG v2: SAMPLE EMP PAYLOAD:", empPayload[0]);
             const { error: empError } = await supabase.from('employees').upsert(empPayload);
             if (empError) failures.push(`Employees: ${empError.message}`);
         }
@@ -207,6 +208,7 @@ export const importBackupData = async (jsonData: any): Promise<{ success: boolea
 
                 // Strict Filter 2: Unknown Employee
                 if (!validEmployeeIds.has(s.employeeId)) {
+                    console.warn(`DEBUG v2: SKIPPING SHIFT for Unknown ID ${s.employeeId}`);
                     continue; // IGNORE - Prevents FK Violation
                 }
 
