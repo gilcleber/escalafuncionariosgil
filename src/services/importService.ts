@@ -146,10 +146,13 @@ export const importBackupData = async (jsonData: any): Promise<{ success: boolea
         if (profileError) failures.push(`Profile: ${profileError.message}`);
 
         // B. Shift Templates
+        const validTemplateIds = new Set<string>();
         if (settingsData.shiftTemplates?.length > 0) {
             for (const t of settingsData.shiftTemplates) {
                 const isUuid = /^[0-9a-f-]{36}$/i.test(t.id);
                 const newId = isUuid ? t.id : crypto.randomUUID();
+                validTemplateIds.add(newId); // Track valid IDs
+
                 const { error } = await supabase.from('shift_templates').upsert({
                     id: newId,
                     user_id: userId,
@@ -207,9 +210,15 @@ export const importBackupData = async (jsonData: any): Promise<{ success: boolea
 
                 sanitizedEmployees.push(emp);
 
-                // Validate Default Shift UUID (Fix for "invalid input syntax for type uuid")
+                // Validate Default Shift UUID & Existence
                 const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-                const defaultShiftId = (emp.defaultShift && isUuid(emp.defaultShift)) ? emp.defaultShift : null;
+                let defaultShiftId = (emp.defaultShift && isUuid(emp.defaultShift)) ? emp.defaultShift : null;
+
+                // CRITICAL: Ensure Template ID exists in DB (FK Constraint verification)
+                if (defaultShiftId && !validTemplateIds.has(defaultShiftId)) {
+                    console.warn(`[IMPORT] Employee ${name} refers to missing template ${defaultShiftId}. Setting to NULL.`);
+                    defaultShiftId = null;
+                }
 
                 // 2. Map to DB Schema
                 return {
@@ -217,16 +226,19 @@ export const importBackupData = async (jsonData: any): Promise<{ success: boolea
                     user_id: userId,
                     name: emp.name,
                     position: emp.position,
-                    default_shift_template_id: defaultShiftId, // SANITIZED UUID
-                    active: isActive
-                    // REMOVED end_date (Schema mismatch)
-                    // REMOVED display_order (Schema mismatch)
+                    default_shift_template_id: defaultShiftId || null,
+                    active: isActive,
+                    display_order: emp.displayOrder || 0 // RESTORED
                 };
             });
 
-            console.log("DEBUG v2: SAMPLE EMP PAYLOAD:", empPayload[0]);
+            console.log("DEBUG v3: EMP PAYLOAD count:", empPayload.length);
             const { error: empError } = await supabase.from('employees').upsert(empPayload);
-            if (empError) failures.push(`Employees: ${empError.message}`);
+            if (empError) {
+                console.error("❌ CRITICAL: EMP UPSERT FAILED", empError);
+                failures.push(`Employees Insert Failed: ${empError.message} (Code: ${empError.code})`);
+                alert(`ERRO GRAVE AO RESTAURAR FUNCIONÁRIOS: ${empError.message}`);
+            }
         }
 
         // E. Shifts
