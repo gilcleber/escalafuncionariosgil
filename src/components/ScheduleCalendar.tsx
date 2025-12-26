@@ -607,104 +607,142 @@ const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
       return <CalendarCompactView scheduleData={scheduleData} onCellClick={handleCellClick} getShiftForEmployeeAndDate={getShiftForEmployeeAndDate} getShiftDisplay={getShiftDisplay} getShiftColor={getShiftColor} formatDate={formatDate} getDaysInMonth={getDaysInMonth} generateCalendarDays={generateCalendarDays} isEmployeeOrViewOnly={isEmployeeOrViewOnly} isSaving={isSaving} />;
     }
 
-    const WeeklyGrid = () => (
-      <div className="neuro-card p-4 h-full overflow-auto">
-        <div className="overflow-x-auto">
-          <div className="min-w-full">
-            <div className="grid grid-cols-8 gap-2 mb-4">
-              <div className="neuro-outset-sm p-2 text-sm font-bold bg-neuro-calendar-header text-center rounded-2xl text-neuro-text-primary">
-                FUNCIONÁRIO
+    const WeeklyGrid = () => {
+      // LOGIC TO MERGE DUPLICATES AND HIDE INACTIVE
+      const visibleEmployees = React.useMemo(() => {
+        const map = new Map<string, { display: any, ids: string[] }>();
+
+        scheduleData.employees.forEach((emp: any) => {
+          // 1. Hide Inactive (Archived)
+          // Also check legacy endDate logic just in case the property exists in memory
+          const isActive = emp.isActive ?? emp.active ?? true;
+          // const endDate = emp.endDate ? new Date(emp.endDate) : null;
+          // if (endDate && endDate < new Date()) return; // Removed endDate from schema, so rely on 'active' flag.
+
+          if (!isActive) return;
+
+          // 2. Group by Name (Merge Duplicates)
+          const nameKey = emp.name ? emp.name.trim() : 'Sem Nome';
+          if (!map.has(nameKey)) {
+            map.set(nameKey, { display: emp, ids: [emp.id] });
+          } else {
+            map.get(nameKey)!.ids.push(emp.id);
+          }
+        });
+
+        return Array.from(map.values());
+      }, [scheduleData.employees]);
+
+      const getMergedShifts = (ids: string[], date: string) => {
+        return ids.flatMap(id => getManagerDefinedShifts(id, date));
+      };
+
+      const hasMergedValidationErrors = (ids: string[]) => {
+        return ids.some(id => hasValidationErrors(id));
+      };
+
+      return (
+        <div className="neuro-card p-4 h-full overflow-auto">
+          <div className="overflow-x-auto">
+            <div className="min-w-full">
+              <div className="grid grid-cols-8 gap-2 mb-4">
+                <div className="neuro-outset-sm p-2 text-sm font-bold bg-neuro-calendar-header text-center rounded-2xl text-neuro-text-primary">
+                  FUNCIONÁRIO
+                </div>
+                {WEEKDAYS.map((day, index) => <div key={day} className={cn("neuro-outset-sm p-2 text-sm font-bold text-center rounded-2xl", index === 0 ? "bg-neuro-error/10 text-neuro-calendar-weekend" : "bg-neuro-accent/10 text-neuro-calendar-weekday")}>
+                  {day}
+                </div>)}
               </div>
-              {WEEKDAYS.map((day, index) => <div key={day} className={cn("neuro-outset-sm p-2 text-sm font-bold text-center rounded-2xl", index === 0 ? "bg-neuro-error/10 text-neuro-calendar-weekend" : "bg-neuro-accent/10 text-neuro-calendar-weekday")}>
-                {day}
-              </div>)}
-            </div>
 
-            {Array.from({
-              length: weeksCount
-            }, (_, weekIndex) => {
-              const weekDays = calendarDays.slice(weekIndex * 7, (weekIndex + 1) * 7);
-              return <div key={weekIndex} className="mb-4">
-                {/* Days row */}
-                <div className="grid grid-cols-8 gap-2 mb-2">
-                  <div></div>
-                  {weekDays.map((day, dayIndex) => {
-                    const isFirstDayOfWeek = dayIndex === 0;
-                    return <div key={dayIndex} className={cn("neuro-inset p-1 text-xs text-center font-bold rounded-2xl bg-neuro-element", day ? "text-neuro-text-primary" : "", isFirstDayOfWeek && day ? "text-neuro-calendar-weekend" : "text-neuro-text-secondary")}>
-                      {day || ''}
-                    </div>;
-                  })}
-                </div>
-
-                {/* Events row */}
-                <div className="grid grid-cols-8 gap-2 mb-2">
-                  <div className="neuro-outset-sm p-2 bg-neuro-warning/20 text-sm font-bold text-center rounded-2xl text-neuro-text-primary">
-                    EVENTOS
-                  </div>
-                  {weekDays.map((day, dayIndex) => {
-                    if (!day) return <div key={dayIndex} className="p-2 min-h-[35px]"></div>;
-                    const date = formatDate(day);
-                    const games = getGamesForDate(date);
-                    return <div key={`games-${day}`} className={cn(getGameCellColor(games), "p-1 min-h-[35px] text-xs transition-all duration-200 rounded-2xl flex items-center justify-center", !isEmployeeOrViewOnly && !isSaving && "neuro-hover cursor-pointer")} onClick={() => !isSaving && handleGameCellClick(date)}>
-                      <div className="text-center text-xs leading-tight">
-                        {games.map((game, index) => <div key={index} className="mb-1">
-                          <div className="font-bold truncate text-neuro-calendar-event">{game.name}</div>
-                          <div className="text-xs text-neuro-text-secondary">{game.time}</div>
-                        </div>)}
-                      </div>
-                    </div>;
-                  })}
-                </div>
-
-                {/* Employee rows */}
-                {scheduleData.employees.map((employee: any) => <div key={`${employee.id}-week${weekIndex}`} className="mb-4">
-                  {/* Employee shift row */}
+              {Array.from({
+                length: weeksCount
+              }, (_, weekIndex) => {
+                const weekDays = calendarDays.slice(weekIndex * 7, (weekIndex + 1) * 7);
+                return <div key={weekIndex} className="mb-4">
+                  {/* Days row */}
                   <div className="grid grid-cols-8 gap-2 mb-2">
-                    <div className={cn("neuro-outset-sm p-2 bg-gradient-to-r from-blue-500/20 to-blue-600/20 text-sm font-bold text-center rounded-xl flex items-center justify-center min-h-[55px] border-2", hasValidationErrors(employee.id) ? "border-neuro-error bg-neuro-error/10" : "border-blue-500/30")}>
-                      <div className="flex items-center gap-1">
-                        {hasValidationErrors(employee.id) && <AlertTriangle className="h-3 w-3 text-neuro-error" />}
-                        <span className="font-bold text-blue-600 uppercase tracking-wide">{employee.name}</span>
-                      </div>
-                    </div>
-
+                    <div></div>
                     {weekDays.map((day, dayIndex) => {
-                      if (!day) return <div key={dayIndex} className="p-2 min-h-[55px]"></div>;
-                      const date = formatDate(day);
-                      const shifts = getManagerDefinedShifts(employee.id, date);
+                      const isFirstDayOfWeek = dayIndex === 0;
+                      return <div key={dayIndex} className={cn("neuro-inset p-1 text-xs text-center font-bold rounded-2xl bg-neuro-element", day ? "text-neuro-text-primary" : "", isFirstDayOfWeek && day ? "text-neuro-calendar-weekend" : "text-neuro-text-secondary")}>
+                        {day || ''}
+                      </div>;
+                    })}
+                  </div>
 
-                      return <div key={`${employee.id}-${day}`} className={cn(getMultipleShiftsColor(shifts, date) || "neuro-inset bg-neuro-element", "p-1 min-h-[55px] text-sm transition-all duration-200 rounded-2xl flex items-center justify-center", !isEmployeeOrViewOnly && !isSaving && "neuro-hover cursor-pointer")} onClick={() => !isSaving && handleCellClick(employee.id, date)}>
-                        <div className="font-semibold text-center text-xs leading-tight w-full">
-                          {getMultipleShiftsDisplay(shifts)}
+                  {/* Events row */}
+                  <div className="grid grid-cols-8 gap-2 mb-2">
+                    <div className="neuro-outset-sm p-2 bg-neuro-warning/20 text-sm font-bold text-center rounded-2xl text-neuro-text-primary">
+                      EVENTOS
+                    </div>
+                    {weekDays.map((day, dayIndex) => {
+                      if (!day) return <div key={dayIndex} className="p-2 min-h-[35px]"></div>;
+                      const date = formatDate(day);
+                      const games = getGamesForDate(date);
+                      return <div key={`games-${day}`} className={cn(getGameCellColor(games), "p-1 min-h-[35px] text-xs transition-all duration-200 rounded-2xl flex items-center justify-center", !isEmployeeOrViewOnly && !isSaving && "neuro-hover cursor-pointer")} onClick={() => !isSaving && handleGameCellClick(date)}>
+                        <div className="text-center text-xs leading-tight">
+                          {games.map((game: any, index: number) => <div key={index} className="mb-1">
+                            <div className="font-bold truncate text-neuro-calendar-event">{game.name}</div>
+                            <div className="text-xs text-neuro-text-secondary">{game.time}</div>
+                          </div>)}
                         </div>
                       </div>;
                     })}
                   </div>
 
-                  {/* Employee routine row */}
-                  <div className="grid grid-cols-8 gap-2 mb-2">
-                    <div className="neuro-outset-sm p-1 text-sm font-bold text-center bg-neuro-accent/20 rounded-2xl min-h-[30px] flex items-center justify-center text-neuro-text-primary">
-                      ROTINA/TAREFA
+                  {/* Employee rows (MERGED & FILTERED) */}
+                  {visibleEmployees.map(({ display: employee, ids }) => <div key={`${employee.name}-week${weekIndex}`} className="mb-4">
+                    {/* Employee shift row */}
+                    <div className="grid grid-cols-8 gap-2 mb-2">
+                      <div className={cn("neuro-outset-sm p-2 bg-gradient-to-r from-blue-500/20 to-blue-600/20 text-sm font-bold text-center rounded-xl flex items-center justify-center min-h-[55px] border-2", hasMergedValidationErrors(ids) ? "border-neuro-error bg-neuro-error/10" : "border-blue-500/30")}>
+                        <div className="flex items-center gap-1">
+                          {hasMergedValidationErrors(ids) && <AlertTriangle className="h-3 w-3 text-neuro-error" />}
+                          <span className="font-bold text-blue-600 uppercase tracking-wide">{employee.name}</span>
+                        </div>
+                      </div>
+
+                      {weekDays.map((day, dayIndex) => {
+                        if (!day) return <div key={dayIndex} className="p-2 min-h-[55px]"></div>;
+                        const date = formatDate(day);
+                        // GET SHIFTS FROM ALL IDS
+                        const shifts = getMergedShifts(ids, date);
+
+                        // Use Primary ID for interactions (ids[0])
+                        return <div key={`${employee.id}-${day}`} className={cn(getMultipleShiftsColor(shifts, date) || "neuro-inset bg-neuro-element", "p-1 min-h-[55px] text-sm transition-all duration-200 rounded-2xl flex items-center justify-center", !isEmployeeOrViewOnly && !isSaving && "neuro-hover cursor-pointer")} onClick={() => !isSaving && handleCellClick(ids[0], date)}>
+                          <div className="font-semibold text-center text-xs leading-tight w-full">
+                            {getMultipleShiftsDisplay(shifts)}
+                          </div>
+                        </div>;
+                      })}
                     </div>
 
-                    {weekDays.map((day, dayIndex) => {
-                      if (!day) return <div key={dayIndex} className="p-1 min-h-[30px]"></div>;
-                      const date = formatDate(day);
-                      const routines = getRoutinesForEmployeeAndDate(employee.id, date);
-                      return <div key={`routine-${employee.id}-${day}`} className={cn(getRoutineCellColor(routines), "p-1 min-h-[30px] text-xs transition-all duration-200 rounded-2xl flex flex-col items-center justify-center gap-0.5", !isEmployeeOrViewOnly && !isSaving && "neuro-hover cursor-pointer")} onClick={() => !isSaving && handleRoutineCellClick(employee.id, date)}>
-                        {routines.map((routine, routineIndex) => <div key={routineIndex} className="text-center w-full">
-                          <div className="text-xs font-semibold truncate text-neuro-calendar-routine">{routine.time}</div>
-                          <div className="text-xs leading-tight truncate text-neuro-text-primary">{routine.name}</div>
-                        </div>)}
-                      </div>;
-                    })}
-                  </div>
-                </div>)}
-              </div>;
-            })}
+                    {/* Employee routine row */}
+                    <div className="grid grid-cols-8 gap-2 mb-2">
+                      <div className="neuro-outset-sm p-1 text-sm font-bold text-center bg-neuro-accent/20 rounded-2xl min-h-[30px] flex items-center justify-center text-neuro-text-primary">
+                        ROTINA/TAREFA
+                      </div>
+
+                      {weekDays.map((day, dayIndex) => {
+                        if (!day) return <div key={dayIndex} className="p-1 min-h-[30px]"></div>;
+                        const date = formatDate(day);
+                        // Use Primary ID for routines (assuming routines are not split across duplicates usually)
+                        const routines = getRoutinesForEmployeeAndDate(ids[0], date);
+                        return <div key={`routine-${employee.id}-${day}`} className={cn(getRoutineCellColor(routines), "p-1 min-h-[30px] text-xs transition-all duration-200 rounded-2xl flex flex-col items-center justify-center gap-0.5", !isEmployeeOrViewOnly && !isSaving && "neuro-hover cursor-pointer")} onClick={() => !isSaving && handleRoutineCellClick(ids[0], date)}>
+                          {routines.map((routine: any, routineIndex: number) => <div key={routineIndex} className="text-center w-full">
+                            <div className="text-xs font-semibold truncate text-neuro-calendar-routine">{routine.time}</div>
+                            <div className="text-xs leading-tight truncate text-neuro-text-primary">{routine.name}</div>
+                          </div>)}
+                        </div>;
+                      })}
+                    </div>
+                  </div>)}
+                </div>;
+              })}
+            </div>
           </div>
         </div>
-      </div>
-    );
+      );
+    };
 
     if (calendarView === 'fullscreen') {
       return <FullScreenSchedule onClose={() => setCalendarView('weekly')} />;
