@@ -227,8 +227,8 @@ export const importBackupData = async (jsonData: any): Promise<{ success: boolea
                     name: emp.name,
                     position: emp.position,
                     default_shift_template_id: defaultShiftId || null,
-                    active: isActive,
-                    display_order: emp.displayOrder || 0 // RESTORED
+                    active: isActive
+                    // display_order: emp.displayOrder || 0  <-- REMOVED: Column does not exist in DB (Error PGRST204)
                 };
             });
 
