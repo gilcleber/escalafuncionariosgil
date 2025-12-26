@@ -89,56 +89,76 @@ const FullScreenSchedule: React.FC<FullScreenScheduleProps> = ({
 
     return (
         <div className="fixed inset-0 z-[100] bg-white flex flex-col">
-            {/* Header minimalista para sair */}
-            {/* Header com estilo PWA (Azul Escuro Profundo) */}
-            {/* Header com estilo PWA (Azul Escuro Profundo) */}
-            <div className="bg-[#1a365d] text-white py-1 shadow-lg shrink-0 z-[101] relative min-h-[50px] flex flex-col items-center justify-center select-none">
+            {/* Header com estilo PWA (Azul Escuro Profundo) - ESTRITAMENTE TEXTO E SETAS */}
+            <div className="bg-[#1a365d] text-white py-1 shadow-lg shrink-0 z-[101] relative min-h-[50px] flex flex-col items-center justify-center select-none cursor-default">
 
                 {/* Linha Superior: Nome da Empresa */}
-                <div className="text-[10px] uppercase font-bold tracking-[0.2em] text-blue-200/80 mb-0">
-                    {settings.companyProfile?.name || 'RADIO BANDEIRANTES'}
+                <div className="text-[9px] uppercase font-bold tracking-[0.2em] text-blue-200/80 mb-0 leading-none mt-1">
+                    {settings.companyProfile?.name || 'RADIO BANDEIRANTES'} 85,7
                 </div>
 
                 {/* Linha Principal: Setas e Data */}
-                <div className="flex items-center justify-center gap-6 mt-0">
-                    <ArrowLeft className="h-6 w-6 text-red-600 cursor-pointer hover:text-red-500 transition-colors" />
+                <div className="flex items-center justify-center gap-8 mt-1">
+                    <ArrowLeft className="h-5 w-5 text-red-600 cursor-pointer hover:text-red-500 transition-colors stroke-[3]" />
 
-                    <h1 className="text-2xl font-black tracking-widest uppercase font-mono whitespace-nowrap text-white drop-shadow-md">
+                    <h1 className="text-xl font-black tracking-widest uppercase font-mono whitespace-nowrap text-white drop-shadow-md">
                         {MONTHS[month]} {year} - {MONTHS[(month + 1) % 12]} {month === 11 ? year + 1 : year}
                     </h1>
 
-                    <ArrowRight className="h-6 w-6 text-red-600 cursor-pointer hover:text-red-500 transition-colors" />
+                    <ArrowRight className="h-5 w-5 text-red-600 cursor-pointer hover:text-red-500 transition-colors stroke-[3]" />
                 </div>
+            </div>
 
-                {/* Botão Sair (Discreto/Invisible ou Absolute Top Right) */}
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute top-2 right-2 text-white/20 hover:text-white/80 hover:bg-white/10"
-                    onClick={onClose}
-                >
-                    <X className="h-5 w-5" />
-                </Button>
-
-                {/* Botões de Seleção (Integrados ou Flutuantes?) */}
-                {/* User complained about "Exit" button. I'll hide selection buttons unless in selection mode? */}
-                {/* Moving Selection Logic to floated absolute Left or keeping invisible until needed? */}
-                {/* I'll keep them absolute Left for now, similar to PWA logic if possible, or minimally intrusive */}
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                    {!selectionMode ? (
-                        <Button
-                            onClick={onToggleSelectionMode}
-                            variant="ghost"
-                            className="text-blue-300 hover:text-white hover:bg-white/10 text-[10px] uppercase font-bold tracking-wider h-8"
-                        >
-                            Modo Seleção
-                        </Button>
-                    ) : (
-                        <div className="flex items-center gap-2 bg-blue-900/80 p-1 rounded border border-blue-700">
-                            <Button onClick={onBatchEdit} className="bg-green-600 h-6 text-[10px] px-2">Editar ({selectedCells.length})</Button>
-                            <Button onClick={onToggleSelectionMode} variant="destructive" className="h-6 text-[10px] px-2">Sair</Button>
+            {/* CONTROLES FLUTUANTES (Desacoplados do Header) */}
+            <div className="fixed bottom-6 right-6 z-[150] flex flex-col items-end gap-3 pointer-events-none">
+                {/* Estado de Seleção */}
+                {selectionMode && (
+                    <div className="pointer-events-auto bg-white/90 backdrop-blur shadow-xl rounded-xl p-2 flex flex-col gap-2 border border-blue-200 animate-in slide-in-from-right-10 w-[180px]">
+                        <div className="text-xs font-bold text-center text-blue-900 border-b pb-1 mb-1">
+                            {selectedCells.length} SELECIONADOS
                         </div>
-                    )}
+                        <Button
+                            onClick={onBatchEdit}
+                            disabled={selectedCells.length === 0}
+                            className="bg-green-600 hover:bg-green-700 text-white h-8 text-xs font-bold shadow-sm w-full"
+                        >
+                            EDITAR ITENS
+                        </Button>
+                        <Button
+                            onClick={onBatchClear}
+                            variant="outline"
+                            className="h-8 text-xs border-red-200 text-red-700 hover:bg-red-50 w-full"
+                        >
+                            LIMPAR SELEÇÃO
+                        </Button>
+                    </div>
+                )}
+
+                {/* Barra de Ferramentas Principal */}
+                <div className="pointer-events-auto flex items-center gap-2 bg-[#1a365d]/90 backdrop-blur text-white p-2 rounded-full shadow-2xl border border-blue-400/30">
+                    <Button
+                        onClick={onToggleSelectionMode}
+                        variant={selectionMode ? "secondary" : "ghost"}
+                        size="sm"
+                        className={cn(
+                            "rounded-full h-10 px-4 font-bold text-xs transition-all",
+                            selectionMode ? "bg-white text-blue-900" : "text-white hover:bg-white/20"
+                        )}
+                    >
+                        {selectionMode ? "CANCELAR" : "SELEÇÃO"}
+                    </Button>
+
+                    <div className="w-px h-6 bg-white/20 mx-1"></div>
+
+                    <Button
+                        onClick={onClose}
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-full h-10 w-10 text-white hover:bg-red-600/80 transition-colors"
+                        title="Sair da Tela Cheia"
+                    >
+                        <X className="h-5 w-5" />
+                    </Button>
                 </div>
             </div>
 
