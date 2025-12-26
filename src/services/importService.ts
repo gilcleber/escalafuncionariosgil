@@ -184,8 +184,8 @@ export const importBackupData = async (jsonData: any): Promise<{ success: boolea
                     position: emp.position,
                     default_shift_template_id: emp.defaultShift, // CORRECTED COLUMN NAME
                     active: isActive,
-                    end_date: emp.endDate || null,
-                    display_order: emp.displayOrder || null
+                    end_date: emp.endDate || null
+                    // Removed display_order to prevent schema error
                 };
             });
 
@@ -194,22 +194,30 @@ export const importBackupData = async (jsonData: any): Promise<{ success: boolea
         }
 
         // E. Shifts
-        // Helper to handle empty time strings for Supabase time type
-        const sanitizeTime = (t: string | null | undefined) => (!t || t.trim() === '') ? null : t;
-
         if (shiftsList.length > 0) {
-            const shiftsPayload = shiftsList.map((s: any) => ({
-                id: s.id,
-                user_id: userId,
-                employee_id: s.employeeId,
-                date: s.date,
-                type: s.type,
-                start_time: sanitizeTime(s.startTime),
-                end_time: sanitizeTime(s.endTime),
-                description: s.description
-            }));
-            const { error: shiftError } = await supabase.from('shifts').upsert(shiftsPayload);
-            if (shiftError) failures.push(`Shifts: ${shiftError.message}`);
+            const shiftsPayload = [];
+            for (const s of shiftsList) {
+                // Strict Filter: Skip shifts with missing times (prevents DB not-null constraint error)
+                if (!s.startTime || s.startTime.trim() === '' || !s.endTime || s.endTime.trim() === '') {
+                    continue; // IGNORE this shift
+                }
+
+                shiftsPayload.push({
+                    id: s.id,
+                    user_id: userId,
+                    employee_id: s.employeeId,
+                    date: s.date,
+                    type: s.type,
+                    start_time: s.startTime,
+                    end_time: s.endTime,
+                    description: s.description
+                });
+            }
+
+            if (shiftsPayload.length > 0) {
+                const { error: shiftError } = await supabase.from('shifts').upsert(shiftsPayload);
+                if (shiftError) failures.push(`Shifts: ${shiftError.message}`);
+            }
         }
 
         // 5. SAVE JSON BLOB (Converted to NEW Format & Sanitized)

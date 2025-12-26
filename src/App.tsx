@@ -28,7 +28,17 @@ const App: React.FC = () => {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <Sonner />
+        <Sonner
+          toastOptions={{
+            classNames: {
+              error: 'bg-red-600 text-white border-red-700 font-medium shadow-lg',
+              success: 'bg-green-600 text-white border-green-700 font-medium shadow-lg',
+              warning: 'bg-orange-500 text-white border-orange-600 font-medium shadow-lg',
+              info: 'bg-blue-600 text-white border-blue-700 font-medium shadow-lg',
+              toast: 'bg-white text-black border-gray-200 shadow-lg', // Default
+            },
+          }}
+        />
         <HashRouter>
           <Routes>
             <Route path="/" element={<Index />} />
