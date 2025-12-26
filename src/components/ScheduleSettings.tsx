@@ -17,20 +17,6 @@ import { toast } from 'sonner';
 const ScheduleSettings = () => {
   const { scheduleData, isLoading } = useSchedule();
 
-  <Button className="w-full bg-red-600 text-white mt-4" onClick={async () => {
-    try {
-      const response = await fetch('/mock_backup.json');
-      const data = await response.json();
-      await importBackupData(data);
-      toast.success("MOCK IMPORTADO COM SUCESSO!");
-    } catch (error) {
-      console.error(error);
-      toast.error("ERRO NO IMPORT MOCK");
-    }
-  }}>
-    DEBUG: IMPORTAR MOCK
-  </Button>
-
   // Safe guard: Ensure settings exist before rendering
   if (isLoading || !scheduleData?.settings) {
     return (
@@ -62,7 +48,6 @@ const ScheduleSettings = () => {
       <div className="neuro-card p-6">
         <Tabs defaultValue="reports" className="w-full">
           <TabsList className="grid w-full grid-cols-5 mb-8 neuro-outset bg-neuro-surface p-2 rounded-3xl">
-            {/*
             <TabsTrigger
               value="company"
               className="flex items-center gap-2 rounded-2xl transition-all duration-200 data-[state=active]:neuro-inset data-[state=active]:bg-neuro-element data-[state=active]:text-neuro-text-primary text-neuro-text-secondary hover:text-neuro-text-primary font-medium"
@@ -91,7 +76,6 @@ const ScheduleSettings = () => {
               <Users2 className="h-4 w-4" />
               <span className="hidden sm:inline">Escalas</span>
             </TabsTrigger>
-            */}
             <TabsTrigger
               value="reports"
               className="flex items-center gap-2 rounded-2xl transition-all duration-200 data-[state=active]:neuro-inset data-[state=active]:bg-neuro-element data-[state=active]:text-neuro-text-primary text-neuro-text-secondary hover:text-neuro-text-primary font-medium"
@@ -101,7 +85,6 @@ const ScheduleSettings = () => {
             </TabsTrigger>
           </TabsList>
 
-          {/*
           <TabsContent value="company" className="space-y-6">
             <div className="neuro-inset p-6 rounded-2xl bg-neuro-element">
               <CompanySettings />
@@ -125,7 +108,6 @@ const ScheduleSettings = () => {
               <CustomWorkScales />
             </div>
           </TabsContent>
-          */}
 
           <TabsContent value="reports" className="space-y-6">
             <div className="neuro-inset p-6 rounded-2xl bg-neuro-element">
