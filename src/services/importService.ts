@@ -183,9 +183,9 @@ export const importBackupData = async (jsonData: any): Promise<{ success: boolea
                     name: emp.name,
                     position: emp.position,
                     default_shift_template_id: emp.defaultShift, // CORRECTED COLUMN NAME
-                    active: isActive,
-                    end_date: emp.endDate || null
-                    // Removed display_order to prevent schema error
+                    active: isActive
+                    // REMOVED end_date (Schema mismatch)
+                    // REMOVED display_order (Schema mismatch)
                 };
             });
 
@@ -196,10 +196,18 @@ export const importBackupData = async (jsonData: any): Promise<{ success: boolea
         // E. Shifts
         if (shiftsList.length > 0) {
             const shiftsPayload = [];
+            // Strict Filter: Valid IDs only (Foreign Key Protection)
+            const validEmployeeIds = new Set(sanitizedEmployees.map(e => e.id));
+
             for (const s of shiftsList) {
-                // Strict Filter: Skip shifts with missing times (prevents DB not-null constraint error)
+                // Strict Filter 1: Missing times
                 if (!s.startTime || s.startTime.trim() === '' || !s.endTime || s.endTime.trim() === '') {
                     continue; // IGNORE this shift
+                }
+
+                // Strict Filter 2: Unknown Employee
+                if (!validEmployeeIds.has(s.employeeId)) {
+                    continue; // IGNORE - Prevents FK Violation
                 }
 
                 shiftsPayload.push({
