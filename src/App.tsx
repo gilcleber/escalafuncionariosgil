@@ -26,9 +26,6 @@ const App: React.FC = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', background: 'blue', color: 'white', textAlign: 'center', zIndex: 9999, fontWeight: 'bold', padding: '5px' }}>
-        ⚠️ VERSÃO ATUALIZADA (AGORA SIM!) - CONFIRA SE AS MUDANÇAS CARREGARAM ⚠️
-      </div>
       <TooltipProvider>
         <Toaster />
         <Sonner
@@ -50,6 +47,9 @@ const App: React.FC = () => {
           </Routes>
         </HashRouter>
       </TooltipProvider>
+      <div style={{ position: 'fixed', bottom: 0, left: 0, width: '100%', background: 'blue', color: 'white', textAlign: 'center', zIndex: 9999, fontWeight: 'bold', padding: '5px' }}>
+        ⚠️ VERSÃO ATUALIZADA - FAIXA EMBAIXO AGORA! CONFIRA AS CORES E IMPORTAÇÃO ⚠️
+      </div>
     </QueryClientProvider>
   );
 };

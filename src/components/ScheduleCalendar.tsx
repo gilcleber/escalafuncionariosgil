@@ -364,25 +364,7 @@ const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
     return scheduleData.settings.employeeRoutines.filter((r: any) => r.employeeId === employeeId && r.date === date);
   };
 
-  const getGameCellColor = (games: any[]) => {
-    if (games.length === 0) return 'neuro-inset bg-neuro-element';
-    const hasGuarani = games.some(game => game.name.toUpperCase().includes('GUARANI'));
-    const hasPontePreta = games.some(game => game.name.toUpperCase().includes('PONTE PRETA'));
-
-    if (hasGuarani && hasPontePreta) {
-      return 'neuro-inset bg-neuro-element';
-    }
-
-    if (hasGuarani) {
-      return 'neuro-inset bg-green-100 text-green-800 border-2 border-green-300';
-    }
-
-    if (hasPontePreta) {
-      return 'neuro-inset bg-gray-700 text-white border-2 border-gray-600';
-    }
-
-    return 'neuro-inset bg-neuro-element';
-  };
+  // Logic moved to Render Loop to support custom styles
   const getRoutineCellColor = (routines: any[]) => {
     if (routines.length === 0) return 'neuro-inset bg-neuro-element';
     return 'neuro-inset bg-purple-50 border-2 border-purple-200';
@@ -761,11 +743,30 @@ const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
                       if (!day) return <div key={dayIndex} className="p-2 min-h-[35px]"></div>;
                       const date = formatDate(day);
                       const games = getGamesForDate(date);
-                      return <div key={`games-${day}`} className={cn(getGameCellColor(games), "p-1 min-h-[35px] text-xs transition-all duration-200 rounded-2xl flex items-center justify-center", !isEmployeeOrViewOnly && !isSaving && "neuro-hover cursor-pointer")} onClick={() => !isSaving && handleGameCellClick(date)}>
+
+                      // Custom Logic for Colors (inline)
+                      let customStyle: React.CSSProperties = {};
+                      let className = "p-1 min-h-[35px] text-xs transition-all duration-200 rounded-2xl flex items-center justify-center";
+
+                      if (games.length === 1 && games[0].color && games[0].color !== '#000000') {
+                        customStyle = { backgroundColor: games[0].color, color: 'white' }; // Apply hex
+                        className += " neuro-inset";
+                      } else {
+                        // Fallback/Default Logic
+                        const hasGuarani = games.some((g: any) => g.name.toUpperCase().includes('GUARANI'));
+                        const hasPonte = games.some((g: any) => g.name.toUpperCase().includes('PONTE PRETA'));
+
+                        if (hasGuarani && hasPonte) className += " neuro-inset bg-neuro-element";
+                        else if (hasGuarani) className += " neuro-inset bg-green-100 text-green-800 border-2 border-green-300";
+                        else if (hasPonte) className += " neuro-inset bg-gray-700 text-white border-2 border-gray-600";
+                        else className += " neuro-inset bg-neuro-element";
+                      }
+
+                      return <div key={`games-${day}`} className={cn(className, !isEmployeeOrViewOnly && !isSaving && "neuro-hover cursor-pointer")} style={customStyle} onClick={() => !isSaving && handleGameCellClick(date)}>
                         <div className="text-center text-xs leading-tight">
                           {games.map((game: any, index: number) => <div key={index} className="mb-1">
-                            <div className="font-bold truncate text-neuro-calendar-event">{game.name}</div>
-                            <div className="text-xs text-neuro-text-secondary">{game.time}</div>
+                            <div className="font-bold truncate text-neuro-calendar-event" style={customStyle.color ? { color: 'inherit' } : {}}>{game.name}</div>
+                            <div className="text-xs text-neuro-text-secondary" style={customStyle.color ? { color: 'inherit', opacity: 0.9 } : {}}>{game.time}</div>
                           </div>)}
                         </div>
                       </div>;
