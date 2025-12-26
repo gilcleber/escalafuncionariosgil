@@ -218,6 +218,7 @@ Data de geração,${new Date().toLocaleString('pt-BR')}
               <Upload className="mr-2 h-4 w-4" />
               Importar Backup
             </Button>
+            {/* 
             <Button className="w-full bg-red-600 text-white mt-4" onClick={async () => {
               try {
                 const response = await fetch('/mock_backup.json');
@@ -230,7 +231,8 @@ Data de geração,${new Date().toLocaleString('pt-BR')}
               }
             }}>
               DEBUG: IMPORTAR MOCK
-            </Button>
+            </Button> 
+            */}
             <label className="flex items-center gap-3">
               <input
                 type="checkbox"
