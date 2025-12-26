@@ -127,22 +127,54 @@ export const importBackupData = async (jsonData: any): Promise<{ success: boolea
         }
 
         // D. Employees
+        const sanitizedEmployees: Employee[] = [];
         if (employeesList.length > 0) {
-            const empPayload = employeesList.map((emp: any) => ({
-                id: emp.id,
-                user_id: userId,
-                name: emp.name,
-                position: emp.position,
-                default_shift: emp.defaultShift,
-                active: emp.isActive ?? emp.active ?? true,
-                end_date: emp.endDate || null,
-                display_order: emp.displayOrder || null
-            }));
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const empPayload = employeesList.map((emp: any) => {
+                // 1. Determine Status
+                let isActive = emp.isActive ?? emp.active ?? true;
+                const endDate = emp.endDate ? new Date(emp.endDate) : null;
+                const name = emp.name || '';
+
+                // Force inactive if end date is in the past
+                if (endDate && endDate < today) {
+                    isActive = false;
+                }
+
+                // Force inactive if Fake/Test
+                if (name.toUpperCase().includes('FAKE') || name.toUpperCase().includes('TESTE')) {
+                    isActive = false;
+                }
+
+                // Update the object in list for JSON saving too
+                emp.active = isActive;
+                emp.isActive = isActive;
+
+                sanitizedEmployees.push(emp);
+
+                // 2. Map to DB Schema
+                return {
+                    id: emp.id,
+                    user_id: userId,
+                    name: emp.name,
+                    position: emp.position,
+                    default_shift_template_id: emp.defaultShift, // CORRECTED COLUMN NAME
+                    active: isActive,
+                    end_date: emp.endDate || null,
+                    display_order: emp.displayOrder || null
+                };
+            });
+
             const { error: empError } = await supabase.from('employees').upsert(empPayload);
             if (empError) failures.push(`Employees: ${empError.message}`);
         }
 
         // E. Shifts
+        // Helper to handle empty time strings for Supabase time type
+        const sanitizeTime = (t: string | null | undefined) => (!t || t.trim() === '') ? null : t;
+
         if (shiftsList.length > 0) {
             const shiftsPayload = shiftsList.map((s: any) => ({
                 id: s.id,
@@ -150,17 +182,17 @@ export const importBackupData = async (jsonData: any): Promise<{ success: boolea
                 employee_id: s.employeeId,
                 date: s.date,
                 type: s.type,
-                start_time: s.startTime,
-                end_time: s.endTime,
+                start_time: sanitizeTime(s.startTime),
+                end_time: sanitizeTime(s.endTime),
                 description: s.description
             }));
             const { error: shiftError } = await supabase.from('shifts').upsert(shiftsPayload);
             if (shiftError) failures.push(`Shifts: ${shiftError.message}`);
         }
 
-        // 5. SAVE JSON BLOB (Converted to NEW Format)
+        // 5. SAVE JSON BLOB (Converted to NEW Format & Sanitized)
         const cleanData: ScheduleData = {
-            employees: employeesList,
+            employees: sanitizedEmployees, // Use the sanitized list
             shifts: shiftsList,
             settings: settingsData,
             month: rootData.month || new Date().getMonth(),
