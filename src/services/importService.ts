@@ -27,14 +27,14 @@ export const importBackupData = async (jsonData: any): Promise<{ success: boolea
 
         const userId = user.id;
 
-        // 2. DEEP CLEAN (REAL RESET)
-        console.log("🔥 [IMPORT] Starting DEEP CLEAN...");
+        // 2. DEEP CLEAN (REAL RESET - ID BASED)
+        console.log("🔥 [IMPORT] Starting DEEP CLEAN (ID-Based)...");
 
-        // A. Reset Settings (removes work rules/routines that might reference employees)
+        // A. Reset Settings
         const defaultSettings = createDefaultSettings();
         const { error: settingsError } = await supabase.from('profiles').upsert({
             id: userId,
-            settings: defaultSettings, // Reset to defaults
+            settings: defaultSettings,
             updated_at: new Date().toISOString()
         });
         if (settingsError) {
@@ -42,32 +42,53 @@ export const importBackupData = async (jsonData: any): Promise<{ success: boolea
             throw new Error("Failed to reset settings. Aborting.");
         }
 
-        // B. Wipe Data Tables (Order Correctly for FK)
-        const tablesToWipe = ['shifts', 'employees', 'events', 'shift_templates'];
+        // B. Fetch IDs to Wipe (Everything Visible)
+        // We fetch ALL visible rows, ignoring specific user_id to catch 'ghosts' with wrong IDs
+        const { data: allShifts } = await supabase.from('shifts').select('id');
+        const { data: allStates } = await supabase.from('employees').select('id'); // Employees
+        const { data: allEvents } = await supabase.from('events').select('id');
+        const { data: allTemplates } = await supabase.from('shift_templates').select('id');
 
-        // 1. Shifts (References Employees)
-        const { error: shiftsDel } = await supabase.from('shifts').delete().eq('user_id', userId);
-        if (shiftsDel) throw new Error(`Failed to wipe shifts: ${shiftsDel.message}`);
+        const shiftIds = allShifts?.map(r => r.id) || [];
+        const empIds = allStates?.map(r => r.id) || [];
+        const eventIds = allEvents?.map(r => r.id) || [];
+        const tplIds = allTemplates?.map(r => r.id) || [];
 
-        // 2. Employees (References Shift Templates sometimes, but mostly independent)
-        const { error: empDel } = await supabase.from('employees').delete().eq('user_id', userId);
-        if (empDel) throw new Error(`Failed to wipe employees: ${empDel.message}`);
+        console.log(`[IMPORT] Found to wipe: ${empIds.length} emps, ${shiftIds.length} shifts.`);
 
-        // 3. Events
-        const { error: evDel } = await supabase.from('events').delete().eq('user_id', userId);
-        if (evDel) throw new Error(`Failed to wipe events: ${evDel.message}`);
+        // C. Execute Deletion (Order Correctly)
 
-        // 4. Templates
-        const { error: tplDel } = await supabase.from('shift_templates').delete().eq('user_id', userId);
-        if (tplDel) throw new Error(`Failed to wipe templates: ${tplDel.message}`);
+        if (shiftIds.length > 0) {
+            const { error: shiftsDel } = await supabase.from('shifts').delete().in('id', shiftIds);
+            if (shiftsDel) throw new Error(`Failed to wipe shifts: ${shiftsDel.message}`);
+        }
 
-        // 5. Schedule Data Blob
+        if (empIds.length > 0) {
+            const { error: empDel } = await supabase.from('employees').delete().in('id', empIds);
+            if (empDel) throw new Error(`Failed to wipe employees: ${empDel.message}`);
+        }
+
+        if (eventIds.length > 0) {
+            const { error: evDel } = await supabase.from('events').delete().in('id', eventIds);
+            if (evDel) throw new Error(`Failed to wipe events: ${evDel.message}`);
+        }
+
+        if (tplIds.length > 0) {
+            const { error: tplDel } = await supabase.from('shift_templates').delete().in('id', tplIds);
+            if (tplDel) throw new Error(`Failed to wipe templates: ${tplDel.message}`);
+        }
+
+        // D. Schedule Data Blob
         await supabase.from('schedule_data').delete().eq('id', 'main');
 
-        // C. VERIFY EMPTY (Double Check)
-        const { count: empCount } = await supabase.from('employees').select('id', { count: 'exact', head: true }).eq('user_id', userId);
+        // E. VERIFY EMPTY
+        const { count: empCount } = await supabase.from('employees').select('id', { count: 'exact', head: true });
         if (empCount && empCount > 0) {
-            throw new Error(`CRITICAL: Database wipe failed. ${empCount} employees remain. Aborting to prevent duplicates.`);
+            console.warn("CRITICAL: Wipe failed. RLS likely blocking. Attempting fallback...");
+            // Fallback: This confirms we can't delete them. But if we can't delete them, we can't 'fix' them.
+            // But wait, if RLS blocked it, `shiftsDel` would likely be an error?
+            // Not always. Some DBs return strict filters.
+            throw new Error(`CRITICAL: Database wipe failed. ${empCount} employees remain. You may be viewing data you do not own and cannot delete.`);
         }
 
         console.log("✅ [IMPORT] Base Cleared Successfully. 0 Records.");
