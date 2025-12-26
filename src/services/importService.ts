@@ -176,13 +176,17 @@ export const importBackupData = async (jsonData: any): Promise<{ success: boolea
 
                 sanitizedEmployees.push(emp);
 
+                // Validate Default Shift UUID (Fix for "invalid input syntax for type uuid")
+                const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+                const defaultShiftId = (emp.defaultShift && isUuid(emp.defaultShift)) ? emp.defaultShift : null;
+
                 // 2. Map to DB Schema
                 return {
                     id: emp.id,
                     user_id: userId,
                     name: emp.name,
                     position: emp.position,
-                    default_shift_template_id: emp.defaultShift, // CORRECTED COLUMN NAME
+                    default_shift_template_id: defaultShiftId, // SANITIZED UUID
                     active: isActive
                     // REMOVED end_date (Schema mismatch)
                     // REMOVED display_order (Schema mismatch)
