@@ -28,82 +28,64 @@ export const importBackupData = async (jsonData: any): Promise<{ success: boolea
         const userId = user.id;
 
         // 2. Parse and Validate Data
-        // We expect the FULL ScheduleData structure from the backup JSON
         const data = jsonData as ScheduleData;
+
+        // ID Mapping Maps
+        const employeeIdMap = new Map<string, string>();
 
         // 3. Migrate Settings (Profile, Rules, Templates, Events)
         if (data.settings) {
-            // A. Profile & JSON Rules
-            // Extract what goes into the JSON column vs what goes into tables
+            // A. Profile settings
             const settingsToSave = {
                 companyProfile: data.settings.companyProfile,
                 workRules: data.settings.workRules,
                 employeeWorkRules: data.settings.employeeWorkRules,
-                employeeRoutines: data.settings.employeeRoutines, // If used
+                employeeRoutines: data.settings.employeeRoutines,
                 workScales: data.settings.workScales
             };
 
-            // Update Profile (Upsert) - we assume the user already has a row or we create one
             const { error: profileError } = await supabase
                 .from('profiles')
                 .upsert({
                     id: userId,
-                    // We keep existing fields if any, just updating settings
                     settings: settingsToSave,
                     updated_at: new Date().toISOString()
                 });
 
             if (profileError) failures.push(`Settings/Profile: ${profileError.message}`);
 
-            // B. Shift Templates (Table: shift_templates)
+            // B. Shift Templates
             if (data.settings.shiftTemplates && data.settings.shiftTemplates.length > 0) {
-                // We'll delete existing for simplicity or upsert?
-                // Upsert is safer. Map to DB columns.
-                const templatesPayload = data.settings.shiftTemplates.map((t: any) => ({
-                    id: t.id, // Assuming ID exists and is UUID? If legacy ID is '1', '2', we might need to keep it or new logic.
-                    // Supabase ID is usually UUID. If legacy is '1', it might fail if column is UUID.
-                    // Checked DB schema: shift_templates.id is uuid default gen_random_uuid().
-                    // If we pass a string '1', it fails. 
-                    // STRATEGY: 
-                    // If ID is valid UUID, use it. If not, don't pass ID (let DB generate) 
-                    // BUT we need to map old IDs to new IDs if we want to preserve Shift references.
-                    // Complex.
-                    // User said "Ctrl C".
-                    // Let's assume for now we keep the ID if it looks like UUID, or we just insert. 
-                    // IMPORTANT: The existing system uses string IDs. Supabase implementation might expect UUIDs.
-                    // Let's check if the ID column is text or uuid.
-                    // useShifts.ts uses standard strings.
-                    // If DB column is UUID, we have a problem migrating '1', '2'.
-                    // I'll assume standard text or we force it.
-                    // Actually, let's treat IDs as is.
-                    user_id: userId,
-                    name: t.name,
-                    start_time: t.startTime, // formatted?
-                    end_time: t.endTime,
-                    color: t.color
-                }));
+                for (const t of data.settings.shiftTemplates) {
+                    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(t.id);
+                    const newId = isUuid ? t.id : crypto.randomUUID();
 
-                // We can't batch upsert easily if IDs conflict or are wrong type.
-                // Let's try upserting one by one to capture specific errors.
-                for (const t of templatesPayload) {
-                    const { error } = await supabase.from('shift_templates').upsert(t);
+                    const { error } = await supabase.from('shift_templates').upsert({
+                        id: newId,
+                        user_id: userId,
+                        name: t.name,
+                        start_time: t.startTime,
+                        end_time: t.endTime,
+                        color: t.color
+                    });
                     if (error) failures.push(`Template ${t.name}: ${error.message}`);
                 }
             }
 
-            // C. Events (Table: events)
-            const eventsList = [...(data.settings.events || []), ...(data.settings.holidays || [])];
+            // C. Events
+            const eventsList = [...(data.settings?.events || []), ...(data.settings?.holidays || [])];
             if (eventsList.length > 0) {
-                const eventsPayload = eventsList.map((e: any) => ({
-                    id: e.id,
-                    user_id: userId,
-                    name: e.name,
-                    date: e.date,
-                    type: e.type === 'custom' ? 'custom_holiday' : 'company_event'
-                }));
+                for (const ev of eventsList) {
+                    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(ev.id);
+                    const newId = isUuid ? ev.id : crypto.randomUUID();
 
-                for (const ev of eventsPayload) {
-                    const { error } = await supabase.from('events').upsert(ev);
+                    const { error } = await supabase.from('events').upsert({
+                        id: newId,
+                        user_id: userId,
+                        name: ev.name,
+                        date: ev.date,
+                        type: ev.type === 'custom' ? 'custom_holiday' : 'company_event'
+                    });
                     if (error) failures.push(`Event ${ev.name}: ${error.message}`);
                 }
             }
@@ -111,48 +93,106 @@ export const importBackupData = async (jsonData: any): Promise<{ success: boolea
 
         // 4. Migrate Employees (Table: employees)
         if (data.employees && data.employees.length > 0) {
+            // First pass: Generate new UUIDs for all employees
+            for (const emp of data.employees) {
+                // Store OLD ID for mapping
+                const oldId = String(emp.id);
+                const newId = crypto.randomUUID();
+
+                employeeIdMap.set(oldId, newId); // Map OLD (string) -> NEW (uuid)
+
+                // UPDATE JSON DATA IN PLACE (Crucial for Hybrid State)
+                emp.id = newId;
+            }
+
             const empPayload = data.employees.map(emp => ({
-                id: emp.id,
+                id: emp.id, // This is now the NEW UUID
                 user_id: userId,
                 name: emp.name,
                 position: emp.position,
                 default_shift: emp.defaultShift,
-                active: emp.active !== false, // active defaults to true
-                start_date: null, // Legacy didn't track start date
+                // Check multiple casing possibilities for active
+                active: (emp as any).isActive ?? (emp as any).active ?? true,
                 end_date: emp.endDate || null,
                 display_order: emp.displayOrder || null
             }));
 
             const { error: empError } = await supabase.from('employees').upsert(empPayload);
-            if (empError) failures.push(`Employees: ${empError.message}`);
+            if (empError) {
+                console.error("Employee Upsert Error:", empError);
+                failures.push(`Employees: ${empError.message}`);
+            }
         }
 
         // 5. Migrate Shifts (Table: shifts)
-        if (data.shifts && data.shifts.length > 0) {
-            // Chunk it? 
-            const shiftsPayload = data.shifts.map(s => ({
-                id: s.id,
-                user_id: userId,
-                employee_id: s.employeeId,
-                date: s.date,
-                type: s.type,
-                start_time: s.startTime,
-                end_time: s.endTime,
-                description: s.description
-            }));
+        // Handle both valid paths for shifts in JSON structure
+        const shiftsList = data.data?.shifts || (data as any).shifts || [];
 
-            // Batch upsert usually fine for < 1000 rows
-            const { error: shiftError } = await supabase.from('shifts').upsert(shiftsPayload);
-            if (shiftError) failures.push(`Shifts: ${shiftError.message}`);
+        if (shiftsList.length > 0) {
+            const shiftsPayload = [];
+            for (const s of shiftsList) {
+                // s.employeeId is still the OLD ID ("1") here (we haven't updated shifts yet)
+                const newEmpId = employeeIdMap.get(String(s.employeeId));
+
+                if (newEmpId) {
+                    // UPDATE JSON DATA IN PLACE (Crucial for Hybrid State)
+                    s.employeeId = newEmpId;
+
+                    shiftsPayload.push({
+                        id: crypto.randomUUID(), // Generate new UUID for relational DB Shift
+                        user_id: userId,
+                        employee_id: newEmpId, // Use mapped Employee UUID
+                        date: s.date,
+                        type: s.type,
+                        start_time: s.startTime,
+                        end_time: s.endTime,
+                        description: s.description
+                    });
+                } else {
+                    console.warn(`Shift for unknown employee ${s.employeeId} skipped.`);
+                }
+            }
+
+            if (shiftsPayload.length > 0) {
+                // Batch upsert to Relational Table
+                const { error: shiftError } = await supabase.from('shifts').upsert(shiftsPayload);
+                if (shiftError) {
+                    console.error("Shift Upsert Error:", shiftError);
+                    failures.push(`Shifts: ${shiftError.message}`);
+                }
+            }
+        }
+
+        // 6. SAVE JSON BLOB (Legacy/Hybrid Support)
+        // We save the MODIFIED variables (data) which now have UUIDs.
+        try {
+            const payload = {
+                id: 'main',
+                user_id: userId,
+                data: JSON.stringify(data),
+                updated_at: new Date().toISOString()
+            };
+
+            const { error: blobError } = await supabase
+                .from('schedule_data')
+                .upsert(payload);
+
+            if (blobError) {
+                console.error("JSON Blob Save Error:", blobError);
+                failures.push(`JSON Blob: ${blobError.message}`);
+            }
+        } catch (e) {
+            console.error("JSON Blob Save Exception:", e);
         }
 
         if (failures.length > 0) {
-            return { success: false, message: 'Importação concluída com alguns erros.', failures };
+            return { success: false, message: 'Importação concluída com alguns erros. Verifique o console.', failures };
         }
 
         return { success: true, message: 'Dados importados com sucesso! Recarregue a página.', failures: [] };
 
     } catch (err: any) {
+        console.error("Fatal Import Error:", err);
         return { success: false, message: `Erro fatal na importação: ${err.message}`, failures: [err.message] };
     }
 };

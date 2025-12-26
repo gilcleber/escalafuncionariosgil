@@ -5,15 +5,31 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings, Building, Calendar, Clock, Users2, FileText } from 'lucide-react';
+import { Settings, Building, Calendar, Clock, Users2, FileText, Upload } from 'lucide-react';
 import { useSchedule } from '@/contexts/ScheduleContextSupabase';
 import CompanySettings from './CompanySettings';
 import UnifiedRules from './UnifiedRules';
 import CustomWorkScales from './CustomWorkScales';
 import EventsSettings from './EventsSettings';
+import { importBackupData } from '@/services/importService';
+import { toast } from 'sonner';
 
 const ScheduleSettings = () => {
   const { scheduleData, isLoading } = useSchedule();
+
+  <Button className="w-full bg-red-600 text-white mt-4" onClick={async () => {
+    try {
+      const response = await fetch('/mock_backup.json');
+      const data = await response.json();
+      await importBackupData(data);
+      toast.success("MOCK IMPORTADO COM SUCESSO!");
+    } catch (error) {
+      console.error(error);
+      toast.error("ERRO NO IMPORT MOCK");
+    }
+  }}>
+    DEBUG: IMPORTAR MOCK
+  </Button>
 
   // Safe guard: Ensure settings exist before rendering
   if (isLoading || !scheduleData?.settings) {
@@ -44,8 +60,9 @@ const ScheduleSettings = () => {
 
       {/* Settings Tabs */}
       <div className="neuro-card p-6">
-        <Tabs defaultValue="company" className="w-full">
+        <Tabs defaultValue="reports" className="w-full">
           <TabsList className="grid w-full grid-cols-5 mb-8 neuro-outset bg-neuro-surface p-2 rounded-3xl">
+            {/*
             <TabsTrigger
               value="company"
               className="flex items-center gap-2 rounded-2xl transition-all duration-200 data-[state=active]:neuro-inset data-[state=active]:bg-neuro-element data-[state=active]:text-neuro-text-primary text-neuro-text-secondary hover:text-neuro-text-primary font-medium"
@@ -74,15 +91,17 @@ const ScheduleSettings = () => {
               <Users2 className="h-4 w-4" />
               <span className="hidden sm:inline">Escalas</span>
             </TabsTrigger>
+            */}
             <TabsTrigger
               value="reports"
               className="flex items-center gap-2 rounded-2xl transition-all duration-200 data-[state=active]:neuro-inset data-[state=active]:bg-neuro-element data-[state=active]:text-neuro-text-primary text-neuro-text-secondary hover:text-neuro-text-primary font-medium"
             >
               <FileText className="h-4 w-4" />
-              <span className="hidden sm:inline">Relatórios</span>
+              <span className="hidden sm:inline">Relatórios (DEBUG MODE)</span>
             </TabsTrigger>
           </TabsList>
 
+          {/*
           <TabsContent value="company" className="space-y-6">
             <div className="neuro-inset p-6 rounded-2xl bg-neuro-element">
               <CompanySettings />
@@ -106,6 +125,7 @@ const ScheduleSettings = () => {
               <CustomWorkScales />
             </div>
           </TabsContent>
+          */}
 
           <TabsContent value="reports" className="space-y-6">
             <div className="neuro-inset p-6 rounded-2xl bg-neuro-element">
@@ -212,6 +232,23 @@ Data de geração,${new Date().toLocaleString('pt-BR')}
         <div className="neuro-inset p-4 rounded-2xl bg-neuro-surface">
           <h3 className="text-lg font-semibold mb-4 text-neuro-text-primary">Conteúdo dos Relatórios</h3>
           <div className="space-y-3">
+            <Button variant="outline" className="w-full" onClick={() => document.getElementById('file-upload')?.click()}>
+              <Upload className="mr-2 h-4 w-4" />
+              Importar Backup
+            </Button>
+            <Button className="w-full bg-red-600 text-white mt-4" onClick={async () => {
+              try {
+                const response = await fetch('/mock_backup.json');
+                const data = await response.json();
+                await importBackupData(data);
+                toast.success("MOCK IMPORTADO COM SUCESSO!");
+              } catch (error) {
+                console.error(error);
+                toast.error("ERRO NO IMPORT MOCK");
+              }
+            }}>
+              DEBUG: IMPORTAR MOCK
+            </Button>
             <label className="flex items-center gap-3">
               <input
                 type="checkbox"

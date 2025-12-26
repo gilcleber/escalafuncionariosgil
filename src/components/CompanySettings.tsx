@@ -313,6 +313,7 @@ const CompanySettings: React.FC = () => {
 
       {/* Department Templates */}
       {/* MIGRATION SECTION (V2) - Inserted Here as Requested */}
+      {/* Migration Section (V2) - Temporarily Disabled to prevent crash
       <div className="neuro-card p-6 border-2 border-yellow-500/20 mb-6">
         <div className="neuro-inset p-1 rounded-2xl bg-neuro-element mb-4">
           <div className="flex items-center gap-3 p-4">
@@ -341,6 +342,7 @@ const CompanySettings: React.FC = () => {
           </Button>
         </div>
       </div>
+      */}
 
       <div className="neuro-card p-6">
         <div className="neuro-inset p-1 rounded-2xl bg-neuro-element mb-6">
