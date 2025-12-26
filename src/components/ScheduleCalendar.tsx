@@ -888,7 +888,7 @@ const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
         </Button>
 
         <h2 className="text-2xl font-bold text-neuro-text-primary uppercase tracking-tight">
-          {MONTHS[currentMonth]} {currentYear} <span className="text-gray-400 mx-2">-</span> {getNextMonthName()}
+          {MONTHS[currentMonth]} {currentYear}
         </h2>
 
         <Button variant="outline" size="sm" onClick={() => navigateMonth('next')} className="neuro-button">

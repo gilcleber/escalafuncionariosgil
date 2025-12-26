@@ -138,7 +138,7 @@ const FullScreenSchedule: React.FC<FullScreenScheduleProps> = ({
                         {settings.companyProfile?.name || 'RADIO BANDEIRANTES'}
                     </div>
                     <h1 className="text-xl font-bold tracking-wider uppercase font-mono whitespace-nowrap">
-                        {MONTHS[month]} {year}
+                        {MONTHS[month]} {year} - {MONTHS[(month + 1) % 12]} {month === 11 ? year + 1 : year}
                     </h1>
                 </div>
 
