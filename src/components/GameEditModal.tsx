@@ -108,7 +108,7 @@ const GameEditModal: React.FC<GameEditModalProps> = ({
     <Dialog open={isOpen} onOpenChange={(open) => {
       if (!open) handleClose();
     }}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md z-[200]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />

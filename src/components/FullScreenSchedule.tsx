@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { X, Calendar as CalendarIcon } from 'lucide-react';
+import { X, Calendar as CalendarIcon, ArrowLeft, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Shift } from '@/types/employee';
 import { useSchedule } from '@/contexts/ScheduleContextSupabase';
@@ -91,68 +91,54 @@ const FullScreenSchedule: React.FC<FullScreenScheduleProps> = ({
         <div className="fixed inset-0 z-[100] bg-white flex flex-col">
             {/* Header minimalista para sair */}
             {/* Header com estilo PWA (Azul Escuro Profundo) */}
-            <div className="bg-[#1a365d] text-white px-4 py-2 flex items-center justify-between shadow-lg shrink-0 z-[101] relative min-h-[60px]">
+            {/* Header com estilo PWA (Azul Escuro Profundo) */}
+            <div className="bg-[#1a365d] text-white py-1 shadow-lg shrink-0 z-[101] relative min-h-[50px] flex flex-col items-center justify-center select-none">
 
-                {/* Lado Esquerdo: Botão Seleção (se inativo) ou Controls (se ativo) */}
-                <div className="flex-1 flex justify-start">
+                {/* Linha Superior: Nome da Empresa */}
+                <div className="text-[10px] uppercase font-bold tracking-[0.2em] text-blue-200/80 mb-0">
+                    {settings.companyProfile?.name || 'RADIO BANDEIRANTES'}
+                </div>
+
+                {/* Linha Principal: Setas e Data */}
+                <div className="flex items-center justify-center gap-6 mt-0">
+                    <ArrowLeft className="h-6 w-6 text-red-600 cursor-pointer hover:text-red-500 transition-colors" />
+
+                    <h1 className="text-2xl font-black tracking-widest uppercase font-mono whitespace-nowrap text-white drop-shadow-md">
+                        {MONTHS[month]} {year} - {MONTHS[(month + 1) % 12]} {month === 11 ? year + 1 : year}
+                    </h1>
+
+                    <ArrowRight className="h-6 w-6 text-red-600 cursor-pointer hover:text-red-500 transition-colors" />
+                </div>
+
+                {/* Botão Sair (Discreto/Invisible ou Absolute Top Right) */}
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-2 right-2 text-white/20 hover:text-white/80 hover:bg-white/10"
+                    onClick={onClose}
+                >
+                    <X className="h-5 w-5" />
+                </Button>
+
+                {/* Botões de Seleção (Integrados ou Flutuantes?) */}
+                {/* User complained about "Exit" button. I'll hide selection buttons unless in selection mode? */}
+                {/* Moving Selection Logic to floated absolute Left or keeping invisible until needed? */}
+                {/* I'll keep them absolute Left for now, similar to PWA logic if possible, or minimally intrusive */}
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
                     {!selectionMode ? (
                         <Button
                             onClick={onToggleSelectionMode}
-                            className="bg-gray-200 hover:bg-gray-300 text-gray-800 border-none font-semibold text-xs h-8"
+                            variant="ghost"
+                            className="text-blue-300 hover:text-white hover:bg-white/10 text-[10px] uppercase font-bold tracking-wider h-8"
                         >
-                            MODO SELEÇÃO MÚLTIPLA
+                            Modo Seleção
                         </Button>
                     ) : (
-                        <div className="flex items-center gap-2">
-                            <Button
-                                onClick={onToggleSelectionMode}
-                                className="bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs h-8"
-                            >
-                                SAIR DO MODO SELEÇÃO
-                            </Button>
-
-                            {selectedCells.length > 0 && (
-                                <>
-                                    <Button
-                                        onClick={onBatchEdit}
-                                        className="bg-green-600 hover:bg-green-700 text-white font-bold text-xs h-8"
-                                    >
-                                        EDITAR SELECIONADOS ({selectedCells.length})
-                                    </Button>
-                                    <Button
-                                        onClick={onBatchClear}
-                                        variant="ghost"
-                                        className="text-white hover:bg-white/10 text-xs h-8"
-                                    >
-                                        Limpar Seleção
-                                    </Button>
-                                </>
-                            )}
+                        <div className="flex items-center gap-2 bg-blue-900/80 p-1 rounded border border-blue-700">
+                            <Button onClick={onBatchEdit} className="bg-green-600 h-6 text-[10px] px-2">Editar ({selectedCells.length})</Button>
+                            <Button onClick={onToggleSelectionMode} variant="destructive" className="h-6 text-[10px] px-2">Sair</Button>
                         </div>
                     )}
-                </div>
-
-                {/* Centro: Títulos */}
-                <div className="flex flex-col items-center justify-center absolute left-1/2 -translate-x-1/2">
-                    <div className="text-[10px] uppercase font-bold tracking-widest text-blue-200 mb-0.5">
-                        {settings.companyProfile?.name || 'RADIO BANDEIRANTES'}
-                    </div>
-                    <h1 className="text-xl font-bold tracking-wider uppercase font-mono whitespace-nowrap">
-                        {MONTHS[month]} {year} - {MONTHS[(month + 1) % 12]} {month === 11 ? year + 1 : year}
-                    </h1>
-                </div>
-
-                {/* Lado Direito: Sair */}
-                <div className="flex-1 flex justify-end">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-white hover:bg-white/20 active:bg-white/30"
-                        onClick={onClose}
-                    >
-                        <span className="mr-2 font-bold uppercase text-xs">Sair da Tela Cheia</span>
-                        <X className="h-5 w-5" />
-                    </Button>
                 </div>
             </div>
 
@@ -199,7 +185,10 @@ const FullScreenSchedule: React.FC<FullScreenScheduleProps> = ({
                                 return (
                                     <td key={day} className="border border-gray-200 p-1 align-top bg-white/50 h-[40px]">
                                         {events.map((ev: any, idx: number) => (
-                                            <div key={idx} className="bg-black text-white text-[9px] font-bold px-1 py-0.5 rounded mb-1 text-center truncate">
+                                            <div key={idx}
+                                                className="text-white text-[9px] font-bold px-1 py-0.5 rounded mb-1 text-center truncate shadow-sm"
+                                                style={{ backgroundColor: ev.color || '#000000' }}
+                                            >
                                                 {ev.name} {ev.time}
                                             </div>
                                         ))}

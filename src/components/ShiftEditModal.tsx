@@ -292,7 +292,7 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg w-full max-h-[85vh] overflow-y-auto neuro-card bg-neuro-surface border-none shadow-none mx-4">
+      <DialogContent className="max-w-lg w-full max-h-[85vh] overflow-y-auto neuro-card bg-neuro-surface border-none shadow-none mx-4 z-[200]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-neuro-text-primary">
             <Users className="h-5 w-5 text-neuro-accent" />
