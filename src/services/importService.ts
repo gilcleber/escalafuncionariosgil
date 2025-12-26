@@ -168,7 +168,7 @@ export const importBackupData = async (jsonData: any): Promise<{ success: boolea
         try {
             const payload = {
                 id: 'main',
-                user_id: userId,
+                // user_id: userId, // Removed to fix schema error
                 data: JSON.stringify(data),
                 updated_at: new Date().toISOString()
             };
