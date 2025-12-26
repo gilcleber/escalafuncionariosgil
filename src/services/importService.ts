@@ -27,26 +27,50 @@ export const importBackupData = async (jsonData: any): Promise<{ success: boolea
 
         const userId = user.id;
 
-        // 2. CLEAR EXISTING DATA (Full Restore Mode)
-        console.log("Iniciando limpeza da base para importação limpa...");
+        // 2. DEEP CLEAN (REAL RESET)
+        console.log("🔥 [IMPORT] Starting DEEP CLEAN...");
 
-        // Delete in order to respect Foreign Keys (Shifts depend on Employees)
-        const { error: shiftsDeleteError } = await supabase.from('shifts').delete().eq('user_id', userId);
-        if (shiftsDeleteError) console.error("Error deleting shifts:", shiftsDeleteError.message);
+        // A. Reset Settings (removes work rules/routines that might reference employees)
+        const defaultSettings = createDefaultSettings();
+        const { error: settingsError } = await supabase.from('profiles').upsert({
+            id: userId,
+            settings: defaultSettings, // Reset to defaults
+            updated_at: new Date().toISOString()
+        });
+        if (settingsError) {
+            console.error("❌ Error resetting settings:", settingsError);
+            throw new Error("Failed to reset settings. Aborting.");
+        }
 
-        const { error: employeesDeleteError } = await supabase.from('employees').delete().eq('user_id', userId);
-        if (employeesDeleteError) console.error("Error deleting employees:", employeesDeleteError.message);
+        // B. Wipe Data Tables (Order Correctly for FK)
+        const tablesToWipe = ['shifts', 'employees', 'events', 'shift_templates'];
 
-        const { error: eventsDeleteError } = await supabase.from('events').delete().eq('user_id', userId);
-        if (eventsDeleteError) console.error("Error deleting events:", eventsDeleteError.message);
+        // 1. Shifts (References Employees)
+        const { error: shiftsDel } = await supabase.from('shifts').delete().eq('user_id', userId);
+        if (shiftsDel) throw new Error(`Failed to wipe shifts: ${shiftsDel.message}`);
 
-        const { error: templatesDeleteError } = await supabase.from('shift_templates').delete().eq('user_id', userId);
-        if (templatesDeleteError) console.error("Error deleting shift templates:", templatesDeleteError.message);
+        // 2. Employees (References Shift Templates sometimes, but mostly independent)
+        const { error: empDel } = await supabase.from('employees').delete().eq('user_id', userId);
+        if (empDel) throw new Error(`Failed to wipe employees: ${empDel.message}`);
 
-        // Note: schedule_data is upserted at the end, effectively replacing it.
-        // However, if we want to ensure a clean slate for the blob too, we can delete it here.
-        const { error: scheduleDataDeleteError } = await supabase.from('schedule_data').delete().eq('id', 'main'); // Assuming 'main' is the ID for the user's schedule_data blob
-        if (scheduleDataDeleteError) console.error("Error deleting schedule_data blob:", scheduleDataDeleteError.message);
+        // 3. Events
+        const { error: evDel } = await supabase.from('events').delete().eq('user_id', userId);
+        if (evDel) throw new Error(`Failed to wipe events: ${evDel.message}`);
+
+        // 4. Templates
+        const { error: tplDel } = await supabase.from('shift_templates').delete().eq('user_id', userId);
+        if (tplDel) throw new Error(`Failed to wipe templates: ${tplDel.message}`);
+
+        // 5. Schedule Data Blob
+        await supabase.from('schedule_data').delete().eq('id', 'main');
+
+        // C. VERIFY EMPTY (Double Check)
+        const { count: empCount } = await supabase.from('employees').select('id', { count: 'exact', head: true }).eq('user_id', userId);
+        if (empCount && empCount > 0) {
+            throw new Error(`CRITICAL: Database wipe failed. ${empCount} employees remain. Aborting to prevent duplicates.`);
+        }
+
+        console.log("✅ [IMPORT] Base Cleared Successfully. 0 Records.");
 
 
         // 3. DATA NORMALIZATION (Handle Legacy vs New Format)
