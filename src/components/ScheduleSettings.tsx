@@ -214,10 +214,12 @@ Data de geração,${new Date().toLocaleString('pt-BR')}
         <div className="neuro-inset p-4 rounded-2xl bg-neuro-surface">
           <h3 className="text-lg font-semibold mb-4 text-neuro-text-primary">Conteúdo dos Relatórios</h3>
           <div className="space-y-3">
+            {/* 
             <Button variant="outline" className="w-full" onClick={() => document.getElementById('file-upload')?.click()}>
               <Upload className="mr-2 h-4 w-4" />
               Importar Backup
             </Button>
+            */}
             {/* 
             <Button className="w-full bg-red-600 text-white mt-4" onClick={async () => {
               try {
