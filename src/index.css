@@ -85,6 +85,15 @@
     color: rgb(var(--neuro-text-primary)) !important;
     font-weight: 500 !important;
   }
+
+  /* Remove Yellow Autofill Background */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover, 
+  input:-webkit-autofill:focus, 
+  input:-webkit-autofill:active{
+      -webkit-box-shadow: 0 0 0 30px rgb(var(--neuro-element)) inset !important;
+      -webkit-text-fill-color: rgb(var(--neuro-text-primary)) !important;
+  }
 }
 
 /* Neuomorphic utility classes */

@@ -31,7 +31,8 @@ const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
     setCurrentMonth,
     saveScheduleData,
     isLoading,
-    isSaving
+    isSaving,
+    deleteShift // Added from context
   } = useSchedule();
   const [calendarView, setCalendarView] = useState<CalendarViewType>('weekly');
 
@@ -40,6 +41,7 @@ const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
     employeeId: string;
     date: string;
     shift?: Shift;
+    batchTargets?: { employeeId: string; date: string }[];
   }>({
     isOpen: false,
     employeeId: '',
@@ -69,6 +71,74 @@ const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
     startDate: '',
     endDate: ''
   });
+
+  // State for Selection Mode
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedCells, setSelectedCells] = useState<Set<string>>(new Set());
+
+  // Helper for Next Month Name
+  const getNextMonthName = () => {
+    let nextM = currentMonth + 1;
+    let nextY = currentYear;
+    if (nextM > 11) {
+      nextM = 0;
+      nextY = currentYear + 1;
+    }
+    return `${MONTHS[nextM]} ${nextY}`;
+  };
+
+  const toggleSelectionMode = () => {
+    setIsSelectionMode(!isSelectionMode);
+    setSelectedCells(new Set()); // Clear on toggle
+  };
+
+  const handleCellSelection = (employeeId: string, date: string) => {
+    const key = `${employeeId}|${date}`;
+    const newSelected = new Set(selectedCells);
+    if (newSelected.has(key)) {
+      newSelected.delete(key);
+    } else {
+      newSelected.add(key);
+    }
+    setSelectedCells(newSelected);
+  };
+
+  const handleBatchClear = async () => {
+    if (!window.confirm(`Deseja limpar ${selectedCells.size} células selecionadas? (Isso removerá os turnos)`)) return;
+
+    // Convert Set to Array
+    const cellsToClear = Array.from(selectedCells).map(key => {
+      const [empId, date] = key.split('|');
+      return { empId, date };
+    });
+
+    for (const cell of cellsToClear) {
+      const shifts = scheduleData.shifts.filter(s => s.employeeId === cell.empId && s.date === cell.date);
+      for (const s of shifts) {
+        await deleteShift(s.id);
+      }
+    }
+    setSelectedCells(new Set()); // Deselect after clear
+  };
+
+  const handleBatchEdit = () => {
+    if (selectedCells.size === 0) return;
+    const firstKey = Array.from(selectedCells)[0];
+    const [empId, date] = firstKey.split('|');
+
+    const targets = Array.from(selectedCells).map(key => {
+      const [e, d] = key.split('|');
+      return { employeeId: e, date: d };
+    });
+
+    setEditModal({
+      isOpen: true,
+      employeeId: empId,
+      date: date,
+      shift: undefined, // Start fresh
+      batchTargets: targets
+    });
+  };
 
   const currentMonth = scheduleData.month;
   const currentYear = scheduleData.year;
@@ -126,9 +196,13 @@ const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
   };
 
   // Function to get color for multiple shifts (uses first shift color)
-  const getMultipleShiftsColor = (shifts: Shift[], date: string): string => {
-    if (shifts.length === 0) return '';
-    return getShiftColor(shifts[0], date);
+  const getMultipleShiftsColor = (shifts: Shift[], date: string, isSelected: boolean = false): string => {
+    const baseColor = shifts.length > 0 ? getShiftColor(shifts[0], date) : 'neuro-inset bg-neuro-element';
+
+    if (isSelected) {
+      return cn(baseColor, "ring-2 ring-blue-600 ring-offset-1 z-10");
+    }
+    return baseColor;
   };
 
   const getDaysInMonth = (month: number, year: number) => {
@@ -317,6 +391,11 @@ const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
   const handleCellClick = (employeeId: string, date: string) => {
     if (isEmployeeOrViewOnly) return;
 
+    if (isSelectionMode) {
+      handleCellSelection(employeeId, date);
+      return;
+    }
+
     const shift = getShiftForEmployeeAndDate(employeeId, date);
     setEditModal({
       isOpen: true,
@@ -333,6 +412,9 @@ const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
       date
     });
   };
+  // ...
+  // ...
+
   const handleRoutineCellClick = (employeeId: string, date: string) => {
     if (isEmployeeOrViewOnly) return;
 
@@ -707,8 +789,11 @@ const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
                         // GET SHIFTS FROM ALL IDS
                         const shifts = getMergedShifts(ids, date);
 
+                        const key = `${ids[0]}|${date}`;
+                        const isSelected = selectedCells.has(key);
+
                         // Use Primary ID for interactions (ids[0])
-                        return <div key={`${employee.id}-${day}`} className={cn(getMultipleShiftsColor(shifts, date) || "neuro-inset bg-neuro-element", "p-1 min-h-[55px] text-sm transition-all duration-200 rounded-2xl flex items-center justify-center", !isEmployeeOrViewOnly && !isSaving && "neuro-hover cursor-pointer")} onClick={() => !isSaving && handleCellClick(ids[0], date)}>
+                        return <div key={`${employee.id}-${day}`} className={cn(getMultipleShiftsColor(shifts, date, isSelected) || "neuro-inset bg-neuro-element", "p-1 min-h-[55px] text-sm transition-all duration-200 rounded-2xl flex items-center justify-center", !isEmployeeOrViewOnly && !isSaving && "neuro-hover cursor-pointer", isSelected && "ring-2 ring-blue-600 ring-offset-1 z-10")} onClick={() => !isSaving && handleCellClick(ids[0], date)}>
                           <div className="font-semibold text-center text-xs leading-tight w-full">
                             {getMultipleShiftsDisplay(shifts)}
                           </div>
@@ -745,21 +830,65 @@ const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
     };
 
     if (calendarView === 'fullscreen') {
-      return <FullScreenSchedule onClose={() => setCalendarView('weekly')} />;
+      return (
+        <FullScreenSchedule
+          onClose={() => setCalendarView('weekly')}
+          onCellClick={handleCellClick}
+          selectionMode={isSelectionMode}
+          selectedCells={Array.from(selectedCells)}
+          onToggleSelectionMode={toggleSelectionMode}
+          onBatchEdit={handleBatchEdit}
+          onBatchClear={handleBatchClear}
+        />
+      );
     }
 
     return <WeeklyGrid />;
   };
 
-  return <div className="bg-neuro-bg rounded-lg shadow-lg p-6">
+
+
+
+
+
+
+
+
+
+
+  return <div className="bg-neuro-bg rounded-lg shadow-lg p-6 relative">
+    {/* Floating Action Bar for Selection Mode */}
+    {isSelectionMode && (
+      <div className="sticky top-0 z-50 mb-4 bg-neuro-surface border-2 border-blue-500 rounded-lg p-3 shadow-xl flex items-center justify-between animate-in slide-in-from-top-2">
+        <div className="flex items-center gap-4">
+          <span className="font-bold text-blue-600 bg-blue-100 px-3 py-1 rounded-full text-sm">
+            {selectedCells.size} Selecionados
+          </span>
+          <span className="text-sm text-gray-600">Clique nas células para selecionar</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={() => setSelectedCells(new Set())} className="text-red-500 hover:bg-red-50">
+            Limpar Seleção (Visual)
+          </Button>
+          <div className="h-6 w-px bg-gray-300 mx-2"></div>
+          <Button variant="secondary" size="sm" onClick={() => setIsSelectionMode(false)}>
+            Sair do Modo
+          </Button>
+          <Button variant="default" size="sm" className="bg-blue-600 text-white hover:bg-blue-700" onClick={handleBatchEdit} disabled={selectedCells.size === 0}>
+            Editar Selecionados ({selectedCells.size})
+          </Button>
+        </div>
+      </div>
+    )}
+
     <div className="flex items-center justify-between mb-4">
       <div className="flex items-center gap-4">
         <Button variant="outline" size="sm" onClick={() => navigateMonth('prev')} className="neuro-button">
           <ChevronLeft className="h-4 w-4" />
         </Button>
 
-        <h2 className="text-2xl font-bold text-neuro-text-primary">
-          {MONTHS[currentMonth]} {currentYear}
+        <h2 className="text-2xl font-bold text-neuro-text-primary uppercase tracking-tight">
+          {MONTHS[currentMonth]} {currentYear} <span className="text-gray-400 mx-2">-</span> {getNextMonthName()}
         </h2>
 
         <Button variant="outline" size="sm" onClick={() => navigateMonth('next')} className="neuro-button">
@@ -768,11 +897,24 @@ const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
       </div>
 
       <div className="flex items-center gap-2">
+        <Button
+          variant={isSelectionMode ? "default" : "outline"}
+          size="sm"
+          className={cn("neuro-button flex items-center gap-2", isSelectionMode ? "bg-blue-600 text-white border-blue-600 ring-2 ring-blue-300" : "")}
+          onClick={toggleSelectionMode}
+        >
+          <div className="flex items-center gap-2">
+            <div className={cn("w-2 h-2 rounded-full", isSelectionMode ? "bg-white animate-pulse" : "bg-gray-400")}></div>
+            {isSelectionMode ? 'Modo Seleção ATIVO' : 'Modo Seleção Múltipla'}
+          </div>
+        </Button>
+
+        {/* ... (Existing buttons: ViewOnly Refresh, Save, Share, Export) ... */}
         {isViewOnly && <Button variant="outline" size="sm" className="neuro-button flex items-center gap-2" onClick={handleRefreshPage}>
           <RefreshCw className="h-4 w-4" />
           Atualizar
         </Button>}
-        {!isEmployeeOrViewOnly && <>
+        {!isEmployeeOrViewOnly && !isSelectionMode && <>
           <Button variant="outline" size="sm" className="neuro-button flex items-center gap-2" onClick={handleSaveSchedule} disabled={isSaving}>
             {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {isSaving ? 'Salvando...' : 'Salvar'}
@@ -897,8 +1039,10 @@ const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
       <ShiftEditModal isOpen={editModal.isOpen} onClose={() => setEditModal({
         isOpen: false,
         employeeId: '',
-        date: ''
-      })} employeeId={editModal.employeeId} date={editModal.date} existingShift={editModal.shift} />
+        date: '',
+        shift: undefined,
+        batchTargets: undefined
+      })} employeeId={editModal.employeeId} date={editModal.date} existingShift={editModal.shift} batchTargets={editModal.batchTargets} />
       <GameEditModal isOpen={gameModal.isOpen} onClose={() => setGameModal({
         isOpen: false,
         date: ''

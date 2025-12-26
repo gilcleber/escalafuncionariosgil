@@ -60,6 +60,8 @@ export interface Event {
   date: string;
   time: string;
   description?: string;
+  type?: 'common' | 'national_holiday' | 'optional_holiday' | 'company_event' | 'custom_holiday';
+  color?: string;
 }
 
 export interface EmployeeRoutine {

@@ -10,12 +10,26 @@ import { validateWorkRules } from '@/utils/workRules';
 
 interface FullScreenScheduleProps {
     onClose: () => void;
+    onCellClick: (employeeId: string, date: string) => void;
+    selectionMode: boolean;
+    selectedCells: string[];
+    onToggleSelectionMode: () => void;
+    onBatchEdit: () => void;
+    onBatchClear: () => void;
 }
 
 const MONTHS = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
 const WEEKDAYS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
 
-const FullScreenSchedule: React.FC<FullScreenScheduleProps> = ({ onClose }) => {
+const FullScreenSchedule: React.FC<FullScreenScheduleProps> = ({
+    onClose,
+    onCellClick,
+    selectionMode,
+    selectedCells,
+    onToggleSelectionMode,
+    onBatchEdit,
+    onBatchClear
+}) => {
     const { scheduleData } = useSchedule();
     const { month, year, employees, shifts, settings } = scheduleData;
     const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -77,19 +91,69 @@ const FullScreenSchedule: React.FC<FullScreenScheduleProps> = ({ onClose }) => {
         <div className="fixed inset-0 z-[100] bg-white flex flex-col">
             {/* Header minimalista para sair */}
             {/* Header com estilo PWA (Azul Escuro Profundo) */}
-            <div className="bg-[#1a365d] text-white px-4 py-3 flex items-center justify-between shadow-lg shrink-0 z-[101]">
-                <h1 className="text-xl font-bold tracking-wider uppercase flex-1 text-center font-mono">
-                    {MONTHS[month]} {year}
-                </h1>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-white hover:bg-white/20 active:bg-white/30 absolute right-4 top-3"
-                    onClick={onClose}
-                >
-                    <span className="mr-2 font-bold uppercase">Sair</span>
-                    <X className="h-6 w-6" />
-                </Button>
+            <div className="bg-[#1a365d] text-white px-4 py-2 flex items-center justify-between shadow-lg shrink-0 z-[101] relative min-h-[60px]">
+
+                {/* Lado Esquerdo: Botão Seleção (se inativo) ou Controls (se ativo) */}
+                <div className="flex-1 flex justify-start">
+                    {!selectionMode ? (
+                        <Button
+                            onClick={onToggleSelectionMode}
+                            className="bg-gray-200 hover:bg-gray-300 text-gray-800 border-none font-semibold text-xs h-8"
+                        >
+                            MODO SELEÇÃO MÚLTIPLA
+                        </Button>
+                    ) : (
+                        <div className="flex items-center gap-2">
+                            <Button
+                                onClick={onToggleSelectionMode}
+                                className="bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs h-8"
+                            >
+                                SAIR DO MODO SELEÇÃO
+                            </Button>
+
+                            {selectedCells.length > 0 && (
+                                <>
+                                    <Button
+                                        onClick={onBatchEdit}
+                                        className="bg-green-600 hover:bg-green-700 text-white font-bold text-xs h-8"
+                                    >
+                                        EDITAR SELECIONADOS ({selectedCells.length})
+                                    </Button>
+                                    <Button
+                                        onClick={onBatchClear}
+                                        variant="ghost"
+                                        className="text-white hover:bg-white/10 text-xs h-8"
+                                    >
+                                        Limpar Seleção
+                                    </Button>
+                                </>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {/* Centro: Títulos */}
+                <div className="flex flex-col items-center justify-center absolute left-1/2 -translate-x-1/2">
+                    <div className="text-[10px] uppercase font-bold tracking-widest text-blue-200 mb-0.5">
+                        {settings.companyProfile?.name || 'RADIO BANDEIRANTES'}
+                    </div>
+                    <h1 className="text-xl font-bold tracking-wider uppercase font-mono whitespace-nowrap">
+                        {MONTHS[month]} {year}
+                    </h1>
+                </div>
+
+                {/* Lado Direito: Sair */}
+                <div className="flex-1 flex justify-end">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-white hover:bg-white/20 active:bg-white/30"
+                        onClick={onClose}
+                    >
+                        <span className="mr-2 font-bold uppercase text-xs">Sair da Tela Cheia</span>
+                        <X className="h-5 w-5" />
+                    </Button>
+                </div>
             </div>
 
             {/* Tabela Full Width sem margens */}
@@ -154,8 +218,13 @@ const FullScreenSchedule: React.FC<FullScreenScheduleProps> = ({ onClose }) => {
                             // If active, always show. If inactive, only show if they worked this month.
                             return isActive || hasShiftsInMonth;
                         })
-                            // Sort by name since displayOrder is currently disabled/unreliable
-                            .sort((a, b) => a.name.localeCompare(b.name))
+                            // Sort by Display Order (Primary) then Name (Secondary)
+                            .sort((a, b) => {
+                                const orderA = a.displayOrder ?? 9999;
+                                const orderB = b.displayOrder ?? 9999;
+                                if (orderA !== orderB) return orderA - orderB;
+                                return a.name.localeCompare(b.name);
+                            })
                             .map((employee: any, empIndex: number) => (
                                 <tr key={employee.id} className={cn(empIndex % 2 === 0 ? "bg-white" : "bg-blue-50/30")}>
                                     <th className="sticky left-0 z-10 bg-blue-100 text-blue-900 min-w-[150px] p-2 border-r border-b border-blue-200 text-xs font-bold uppercase shadow-sm">
@@ -167,7 +236,11 @@ const FullScreenSchedule: React.FC<FullScreenScheduleProps> = ({ onClose }) => {
                                         const shifts = getShifts(employee.id, dateStr);
 
                                         return (
-                                            <td key={day} className="border border-gray-200 p-0 h-[50px] align-middle hover:bg-gray-50 transition-colors relative">
+                                            <td
+                                                key={day}
+                                                className="border border-gray-200 p-0 h-[50px] align-middle hover:bg-blue-50 transition-colors relative cursor-pointer active:bg-blue-100"
+                                                onClick={() => onCellClick(employee.id, dateStr)}
+                                            >
                                                 {renderShiftContent(shifts)}
                                             </td>
                                         );

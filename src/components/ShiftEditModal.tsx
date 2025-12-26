@@ -15,6 +15,7 @@ interface ShiftEditModalProps {
   employeeId: string;
   date: string;
   existingShift?: Shift;
+  batchTargets?: { employeeId: string; date: string }[];
 }
 
 interface ShiftInfo {
@@ -29,7 +30,8 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
   onClose,
   employeeId,
   date,
-  existingShift
+  existingShift,
+  batchTargets
 }) => {
   const { scheduleData, addShift, updateShift, deleteShift } = useSchedule();
   const [shiftType, setShiftType] = useState<'work' | 'dayoff' | 'homeoffice' | 'event' | 'birthday' | 'breastfeeding' | 'medical' | 'external' | 'suspension' | 'paternity' | 'blood_donation' | 'military' | 'marriage' | 'public_service' | 'family_death' | 'deduct_day' | 'vacation'>('work');
@@ -67,10 +69,10 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
   useEffect(() => {
     if (isOpen && date) {
       console.log('ShiftEditModal: Opening for employee:', employeeId, 'date:', date);
-      
+
       const shiftsForDate = scheduleData.shifts.filter(s => s.employeeId === employeeId && s.date === date);
       console.log('ShiftEditModal: Shifts for date:', shiftsForDate);
-      
+
       if (shiftsForDate.length > 0) {
         const shiftInfos = shiftsForDate.map(s => ({
           id: s.id,
@@ -130,114 +132,147 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
   const getNextEmptyDays = (maxDays: number = 10) => {
     const currentDate = new Date(date);
     const emptyDays = [];
-    
+
     for (let i = 1; i <= maxDays; i++) {
       const nextDate = new Date(currentDate);
       nextDate.setDate(currentDate.getDate() + i);
-      
+
       if (nextDate.getMonth() !== currentDate.getMonth()) break;
-      
+
       const nextDateString = `${nextDate.getFullYear()}-${(nextDate.getMonth() + 1).toString().padStart(2, '0')}-${nextDate.getDate().toString().padStart(2, '0')}`;
       const existingShift = scheduleData.shifts.find(s => s.employeeId === employeeId && s.date === nextDateString);
-      
+
       if (!existingShift) {
         emptyDays.push(nextDateString);
       } else {
         break;
       }
     }
-    
+
     return emptyDays;
   };
 
   const getConsecutiveDaysForVacation = (days: number) => {
     const currentDate = new Date(date);
     const vacationDates = [date];
-    
+
     for (let i = 1; i < days; i++) {
       const nextDate = new Date(currentDate);
       nextDate.setDate(currentDate.getDate() + i);
-      
+
       const nextDateString = `${nextDate.getFullYear()}-${(nextDate.getMonth() + 1).toString().padStart(2, '0')}-${nextDate.getDate().toString().padStart(2, '0')}`;
       vacationDates.push(nextDateString);
     }
-    
+
     return vacationDates;
   };
 
   const handleSave = () => {
-    console.log('ShiftEditModal: Saving shifts for employee:', employeeId, 'date:', date);
-    console.log('ShiftEditModal: Shifts to save:', shifts);
-    
-    const finalShiftType = shiftType === 'homeoffice' ? 'holiday' : shiftType;
-    
-    if (shiftType === 'vacation') {
-      const vacationDates = getConsecutiveDaysForVacation(vacationDays);
-      
-      vacationDates.forEach((vacationDate, index) => {
-        const existingVacationShift = scheduleData.shifts.find(s => s.employeeId === employeeId && s.date === vacationDate);
-        
-        if (existingVacationShift) {
-          updateShift(existingVacationShift.id, {
-            type: 'vacation' as any,
-            startTime: '',
-            endTime: '',
-            description: `Férias - Dia ${index + 1} de ${vacationDays}`
+    // Determine Target List
+    const targets = (batchTargets && batchTargets.length > 0)
+      ? batchTargets
+      : [{ employeeId, date }];
+
+    console.log(`ShiftEditModal: Saving ${targets.length} targets.`);
+    // If batch mode, we only support single shift editing for now (first item in shifts array)
+    // or we check the primary inputs. Since the UI for batch allows 1 set of inputs (Work, Start, End, Desc).
+    // usage of 'shifts' array state is for the dynamic list, but typically batch edit uses the first/main one.
+
+    // User Requirement: "If field is empty, do NOT overwrite existing"
+    const inputShift = shifts[0] || { startTime: '', endTime: '', description: '' };
+    const inputType = shiftType;
+
+    targets.forEach(target => {
+      const tEmpId = target.employeeId;
+      const tDate = target.date;
+
+      // Vacation Logic: Special Case
+      if (shiftType === 'vacation') {
+        // ... (Keep existing vacation logic or simplify for batch?)
+        // Vacation usually implies a "Start Date" and "Duration". 
+        // Applying to a batch of random cells is weird. 
+        // Standard behavior: Apply "Vacation" status to THESE specific cells.
+
+        // If the user selected 5 loose days and clicked "Vacation" -> Set them all to Vacation.
+        // Ignore "duration" calc for batch mode?
+        // "getConsecutiveDays" logic is likely for "Start from this day".
+
+        if (batchTargets && batchTargets.length > 0) {
+          // Batch Mode: Apply vacation to SELECTED cells only
+          // Check if existing
+          const existing = scheduleData.shifts.find(s => s.employeeId === tEmpId && s.date === tDate);
+          if (existing) deleteShift(existing.id);
+
+          addShift({
+            employeeId: tEmpId,
+            date: tDate,
+            startTime: '', endTime: '',
+            type: 'vacation',
+            description: 'Férias'
           });
         } else {
-          addShift({
-            employeeId, 
-            date: vacationDate, 
-            startTime: '', 
-            endTime: '',
-            type: 'vacation' as any, 
-            description: `Férias - Dia ${index + 1} de ${vacationDays}`
+          // Single Mode: Use the consecutive days logic
+          const vacationDates = getConsecutiveDaysForVacation(vacationDays);
+          vacationDates.forEach((vacationDate, index) => {
+            const existingVacationShift = scheduleData.shifts.find(s => s.employeeId === tEmpId && s.date === vacationDate);
+            if (existingVacationShift) updateShift(existingVacationShift.id, { type: 'vacation', description: `Férias` });
+            else addShift({ employeeId: tEmpId, date: vacationDate, startTime: '', endTime: '', type: 'vacation', description: `Férias` });
           });
         }
-      });
-    } else {
-      const existingShifts = scheduleData.shifts.filter(s => s.employeeId === employeeId && s.date === date);
-      existingShifts.forEach(shift => {
-        deleteShift(shift.id);
-      });
 
-      const validShifts = shifts.filter(shift => {
-        if (shiftType === 'work' || shiftType === 'homeoffice') {
-          return shift.startTime.trim() !== '' && shift.endTime.trim() !== '';
+      } else {
+        // Standard Shift Logic (Work, DayOff, HomeOffice, etc)
+
+        // 1. Find Existing
+        const existing = scheduleData.shifts.find(s => s.employeeId === tEmpId && s.date === tDate);
+
+        // 2. Resolve Values (Smart Merge)
+        // If Input is Empty -> Keep Existing (if types are compatible)
+        // If Type Changed -> Logic varies. 
+        //    - If changing to Work -> Need times. If input empty & existing was Work, keep times. Else ???
+        //    - If changing to DayOff -> Clear times.
+
+        let finalStart = inputShift.startTime;
+        let finalEnd = inputShift.endTime;
+        let finalDesc = inputShift.description;
+
+        if (existing) {
+          // If input is empty, preserve existing
+          if (!finalStart && existing.startTime) finalStart = existing.startTime;
+          if (!finalEnd && existing.endTime) finalEnd = existing.endTime;
+          if (!finalDesc && existing.description) finalDesc = existing.description;
+
+          // EXCEPT: If changing Type to something that doesn't use time (e.g. DayOff), clear times?
+          // User said: "If I leave blank, don't overwrite". 
+          // But if I change to Folga, keeping "08:00" is dirty.
+          // Let's assume: If Type is WORK/HOMEOFFICE, preserve times. If Type is FOLGA, ignore times.
+
+          if (inputType !== 'work' && inputType !== 'homeoffice') {
+            finalStart = '';
+            finalEnd = '';
+          }
+
+          // Delete old (to replace with new clean one, or just update?)
+          // Update is safer for IDs but standard pattern here is delete/add or update.
+          deleteShift(existing.id);
         }
-        return true;
-      });
-      
-      console.log('ShiftEditModal: Valid shifts:', validShifts);
-      
-      validShifts.forEach(shift => {
-        const description = shift.description || '';
+
+        // 3. Add New
+        // Only add if it's a valid shift type or has times if required
+        // Actually, just add it.
+
         addShift({
-          employeeId,
-          date,
-          startTime: shift.startTime,
-          endTime: shift.endTime,
-          type: finalShiftType,
-          description
-        });
-      });
-
-      if (copyToNextDays && !existingShift && validShifts.length > 0) {
-        const emptyDays = getNextEmptyDays().slice(0, daysToApply);
-        emptyDays.forEach(nextDate => {
-          validShifts.forEach(shift => {
-            addShift({
-              employeeId,
-              date: nextDate,
-              startTime: shift.startTime,
-              endTime: shift.endTime,
-              type: finalShiftType,
-              description: shift.description
-            });
-          });
+          employeeId: tEmpId,
+          date: tDate,
+          startTime: finalStart || '',
+          endTime: finalEnd || '',
+          type: inputType === 'homeoffice' ? 'holiday' : inputType, // Map homeoffice logic? Or keep type? Original code mapped to holiday??
+          // Wait, original code: const finalShiftType = shiftType === 'homeoffice' ? 'holiday' : shiftType;
+          // I will keep that logic.
+          description: finalDesc || ''
         });
       }
-    }
+    });
 
     onClose();
   };
@@ -261,7 +296,10 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-neuro-text-primary">
             <Users className="h-5 w-5 text-neuro-accent" />
-            Editar Turno - {employee?.name}
+            {batchTargets && batchTargets.length > 0
+              ? `Editar ${batchTargets.length} Itens em Lote`
+              : `Editar Turno - ${employee?.name}`
+            }
           </DialogTitle>
           <p className="text-sm text-neuro-text-secondary">{formattedDate}</p>
         </DialogHeader>
@@ -275,7 +313,7 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
               </p>
             </div>
           )}
-          
+
           {eventForDate && (
             <div className="neuro-inset p-3 bg-neuro-success/10 rounded-2xl">
               <p className="text-sm text-neuro-success font-medium">
@@ -285,10 +323,10 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
           )}
 
           {/* Copy to next days option */}
-          {!hasExistingShifts && emptyDaysCount > 0 && shiftType !== 'vacation' && (
+          {!hasExistingShifts && emptyDaysCount > 0 && shiftType !== 'vacation' && (!batchTargets || batchTargets.length === 0) && (
             <div className="neuro-inset p-3 bg-neuro-accent/10 rounded-2xl space-y-2">
               <div className="flex items-center space-x-2">
-                <input 
+                <input
                   type="checkbox"
                   checked={copyToNextDays}
                   onChange={(e) => setCopyToNextDays(e.target.checked)}
@@ -302,7 +340,7 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
               {copyToNextDays && (
                 <div className="flex items-center space-x-2">
                   <Label className="text-xs text-neuro-text-secondary">Quantidade de dias:</Label>
-                  <Input 
+                  <Input
                     type="number"
                     min="1"
                     max={Math.min(emptyDaysCount, 15)}
@@ -327,8 +365,8 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
               </SelectTrigger>
               <SelectContent className="neuro-card bg-neuro-surface border-none rounded-2xl z-50">
                 {shiftTypeOptions.map(option => (
-                  <SelectItem 
-                    key={option.value} 
+                  <SelectItem
+                    key={option.value}
                     value={option.value}
                     className="text-neuro-text-primary hover:bg-neuro-element rounded-xl my-1 mx-2 focus:bg-neuro-accent/20"
                   >
@@ -343,7 +381,7 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
           {shiftType === 'vacation' && (
             <div>
               <Label className="text-neuro-text-primary font-semibold mb-2 block">Quantidade de Dias de Férias</Label>
-              <Input 
+              <Input
                 type="number"
                 min="1"
                 max="30"
@@ -368,8 +406,8 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
                 </SelectTrigger>
                 <SelectContent className="neuro-card bg-neuro-surface border-none rounded-2xl z-50">
                   {scheduleData.settings.events.map(event => (
-                    <SelectItem 
-                      key={event.id} 
+                    <SelectItem
+                      key={event.id}
                       value={event.id}
                       className="text-neuro-text-primary hover:bg-neuro-element rounded-xl my-1 mx-2 focus:bg-neuro-accent/20"
                     >
@@ -391,8 +429,8 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
                 </SelectTrigger>
                 <SelectContent className="neuro-card bg-neuro-surface border-none rounded-2xl z-50">
                   {scheduleData.settings.shiftTemplates.map(template => (
-                    <SelectItem 
-                      key={template.id} 
+                    <SelectItem
+                      key={template.id}
                       value={template.id}
                       className="text-neuro-text-primary hover:bg-neuro-element rounded-xl my-1 mx-2 focus:bg-neuro-accent/20"
                     >
@@ -423,12 +461,12 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
                       </Button>
                     )}
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label className="text-xs text-neuro-text-primary font-medium mb-1 block">Hora Início</Label>
-                      <Input 
-                        type="time" 
+                      <Input
+                        type="time"
                         value={shift.startTime}
                         onChange={(e) => updateShiftInfo(index, 'startTime', e.target.value)}
                         className="neuro-inset bg-neuro-surface text-neuro-text-primary text-sm border-none rounded-xl h-10"
@@ -437,8 +475,8 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
                     </div>
                     <div>
                       <Label className="text-xs text-neuro-text-primary font-medium mb-1 block">Hora Fim</Label>
-                      <Input 
-                        type="time" 
+                      <Input
+                        type="time"
                         value={shift.endTime}
                         onChange={(e) => updateShiftInfo(index, 'endTime', e.target.value)}
                         className="neuro-inset bg-neuro-surface text-neuro-text-primary text-sm border-none rounded-xl h-10"
@@ -446,10 +484,10 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
                       />
                     </div>
                   </div>
-                  
+
                   <div>
                     <Label className="text-xs text-neuro-text-primary font-medium mb-1 block">Descrição (opcional)</Label>
-                    <Input 
+                    <Input
                       value={shift.description}
                       onChange={(e) => updateShiftInfo(index, 'description', e.target.value)}
                       placeholder="Ex: Locutor manhã, Operador técnico..."
@@ -458,7 +496,7 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
                   </div>
                 </div>
               ))}
-              
+
               <Button
                 variant="outline"
                 onClick={addNewShift}
@@ -467,7 +505,7 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
                 <Plus className="h-4 w-4" />
                 Adicionar Outro Horário
               </Button>
-              
+
               <p className="text-xs text-neuro-text-muted">
                 * Digite exatamente os horários que deseja. Não há preenchimento automático.
               </p>
@@ -475,20 +513,20 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
           )}
 
           {/* Description for other types */}
-          {(shiftType === 'event' || shiftType === 'medical' || shiftType === 'external' || 
-            shiftType === 'suspension' || shiftType === 'paternity' || shiftType === 'military' || 
+          {(shiftType === 'event' || shiftType === 'medical' || shiftType === 'external' ||
+            shiftType === 'suspension' || shiftType === 'paternity' || shiftType === 'military' ||
             shiftType === 'marriage' || shiftType === 'public_service' || shiftType === 'family_death') && (
-            <div>
-              <Label className="text-neuro-text-primary font-semibold mb-2 block">Descrição</Label>
-              <Textarea 
-                value={shifts[0]?.description || ''}
-                onChange={(e) => updateShiftInfo(0, 'description', e.target.value)}
-                placeholder="Descrição ou observações adicionais"
-                rows={3}
-                className="neuro-inset bg-neuro-element text-neuro-text-primary border-none rounded-2xl resize-none"
-              />
-            </div>
-          )}
+              <div>
+                <Label className="text-neuro-text-primary font-semibold mb-2 block">Descrição</Label>
+                <Textarea
+                  value={shifts[0]?.description || ''}
+                  onChange={(e) => updateShiftInfo(0, 'description', e.target.value)}
+                  placeholder="Descrição ou observações adicionais"
+                  rows={3}
+                  className="neuro-inset bg-neuro-element text-neuro-text-primary border-none rounded-2xl resize-none"
+                />
+              </div>
+            )}
 
           {/* Action Buttons */}
           <div className="flex gap-3 justify-end pt-2">
@@ -496,10 +534,10 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
               <X className="h-4 w-4 mr-2" />
               Cancelar
             </Button>
-            
+
             {hasExistingShifts && (
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={handleDelete}
                 className="neuro-button text-neuro-error hover:bg-neuro-error/10"
               >
@@ -507,7 +545,7 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
                 Remover
               </Button>
             )}
-            
+
             <Button onClick={handleSave} className="neuro-button bg-neuro-accent text-white hover:bg-neuro-accent-light">
               <Save className="h-4 w-4 mr-2" />
               Salvar

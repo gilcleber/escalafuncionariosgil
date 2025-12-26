@@ -22,7 +22,7 @@ export const useEmployees = () => {
                 .from('employees')
                 .select('*')
                 // .eq('user_id', userId) // RLS handles this usually but we keep it safe? user_id is implicit in RLS but precise.
-                // .order('display_order', { ascending: true }) // Removing to fix crash
+                .order('display_order', { ascending: true }) // Restored
                 .order('name', { ascending: true });
 
             // Cast data to any to avoid "excessively deep" error
@@ -70,7 +70,7 @@ export const useEmployees = () => {
                     position: employee.position,
                     default_shift_template_id: employee.defaultShift || null,
                     active: true,
-                    // display_order: maxOrder + 1 // Removing to fix crash
+                    display_order: maxOrder + 1 // Restored
                 }])
                 .select()
                 .single();
@@ -99,7 +99,8 @@ export const useEmployees = () => {
             if (employee.name) updates.name = employee.name;
             if (employee.position) updates.position = employee.position;
             // if (employee.defaultShift !== undefined) updates.default_shift_template_id = employee.defaultShift || null;
-            // if (employee.displayOrder !== undefined) updates.display_order = employee.displayOrder; // Removing to fix crash
+            // if (employee.defaultShift !== undefined) updates.default_shift_template_id = employee.defaultShift || null;
+            if (employee.displayOrder !== undefined) updates.display_order = employee.displayOrder; // Restored
 
             if (employee.defaultShift !== undefined) updates.default_shift_template_id = employee.defaultShift || null;
 
@@ -183,8 +184,36 @@ export const useEmployees = () => {
     };
 
     const reorderEmployees = async (items: { id: string; displayOrder: number }[]) => {
-        console.warn("Reorder disabled: Missing display_order column.");
-        // NO-OP to prevent crash
+        try {
+            const updates = items.map(item => ({
+                id: item.id,
+                display_order: item.displayOrder,
+                updated_at: new Date().toISOString()
+            }));
+
+            // We must update one by one or upsert. Upsert is better but requires all fields? 
+            // 'upsert' works with partials if we are careful? No, mostly 'update' loop is safer for partials in some contexts, 
+            // but let's try looping updates for safety or RPC.
+            // Actually, we can just map and promise.all
+
+            await Promise.all(updates.map(update =>
+                supabase.from('employees').update({ display_order: update.display_order }).eq('id', update.id)
+            ));
+
+            // Optimistic update
+            setEmployees(prev => {
+                const newEmp = [...prev];
+                items.forEach(item => {
+                    const idx = newEmp.findIndex(e => e.id === item.id);
+                    if (idx !== -1) newEmp[idx].displayOrder = item.displayOrder;
+                });
+                return newEmp.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+            });
+
+        } catch (error) {
+            console.error("Error reordering employees:", error);
+            alert("Erro ao reordenar funcionários.");
+        }
     };
 
     return {

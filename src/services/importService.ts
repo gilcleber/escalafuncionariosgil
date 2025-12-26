@@ -42,41 +42,27 @@ export const importBackupData = async (jsonData: any): Promise<{ success: boolea
             throw new Error("Failed to reset settings. Aborting.");
         }
 
-        // B. Fetch IDs to Wipe (Everything Visible)
-        // We fetch ALL visible rows, ignoring specific user_id to catch 'ghosts' with wrong IDs
-        const { data: allShifts } = await supabase.from('shifts').select('id');
-        const { data: allStates } = await supabase.from('employees').select('id'); // Employees
-        const { data: allEvents } = await supabase.from('events').select('id');
-        const { data: allTemplates } = await supabase.from('shift_templates').select('id');
+        // C. Execute Deletion (Bulk via user_id - Standard & Safe)
+        console.log(`🔥 [IMPORT] Executing Bulk Delete for User ID: ${userId}...`);
 
-        const shiftIds = allShifts?.map(r => r.id) || [];
-        const empIds = allStates?.map(r => r.id) || [];
-        const eventIds = allEvents?.map(r => r.id) || [];
-        const tplIds = allTemplates?.map(r => r.id) || [];
+        // Helper to safe delete
+        const safeDelete = async (table: string) => {
+            // @ts-ignore
+            const { error } = await supabase.from(table).delete().eq('user_id', userId);
+            if (error) {
+                console.error(`❌ [IMPORT ERROR] Failed to wipe ${table}:`, error);
+                // Alert with full details
+                const details = `Code: ${error.code}\nMsg: ${error.message}\nHint: ${error.hint}\nDetails: ${error.details}`;
+                alert(`Erro detalhado ao limpar ${table}:\n${details}`);
+                throw new Error(`Failed to wipe ${table}: ${error.message} (Code: ${error.code})`);
+            }
+        };
 
-        console.log(`[IMPORT] Found to wipe: ${empIds.length} emps, ${shiftIds.length} shifts.`);
+        await safeDelete('shifts');
+        await safeDelete('employees');
+        await safeDelete('events');
+        await safeDelete('shift_templates');
 
-        // C. Execute Deletion (Order Correctly)
-
-        if (shiftIds.length > 0) {
-            const { error: shiftsDel } = await supabase.from('shifts').delete().in('id', shiftIds);
-            if (shiftsDel) throw new Error(`Failed to wipe shifts: ${shiftsDel.message}`);
-        }
-
-        if (empIds.length > 0) {
-            const { error: empDel } = await supabase.from('employees').delete().in('id', empIds);
-            if (empDel) throw new Error(`Failed to wipe employees: ${empDel.message}`);
-        }
-
-        if (eventIds.length > 0) {
-            const { error: evDel } = await supabase.from('events').delete().in('id', eventIds);
-            if (evDel) throw new Error(`Failed to wipe events: ${evDel.message}`);
-        }
-
-        if (tplIds.length > 0) {
-            const { error: tplDel } = await supabase.from('shift_templates').delete().in('id', tplIds);
-            if (tplDel) throw new Error(`Failed to wipe templates: ${tplDel.message}`);
-        }
 
         // D. Schedule Data Blob
         await supabase.from('schedule_data').delete().eq('id', 'main');

@@ -154,9 +154,18 @@ export const useSettings = () => {
         const userId = user.id;
         // @ts-ignore
         const { data, error } = await supabase.from('events').insert([{
-            user_id: userId, name: event.name, date: event.date, type: 'company_event'
+            user_id: userId,
+            name: event.name,
+            date: event.date,
+            time: event.time || '',
+            type: event.type || 'common',
+            color: event.color
         }]).select().single();
-        if (error) { alert('Erro ao salvar evento'); return; }
+        if (error) {
+            console.error('Error adding event:', error);
+            alert('Erro ao salvar evento');
+            return;
+        }
         setSettings(prev => ({ ...prev, events: [...(prev.events || []), { ...event, id: data.id }] }));
     };
 
@@ -167,7 +176,11 @@ export const useSettings = () => {
 
         // @ts-ignore
         await supabase.from('events').update({
-            name: event.name, date: event.date
+            name: event.name,
+            date: event.date,
+            time: event.time,
+            type: event.type,
+            color: event.color
         }).eq('id', id);
 
         setSettings(prev => ({
