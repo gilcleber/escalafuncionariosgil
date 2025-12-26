@@ -27,7 +27,29 @@ export const importBackupData = async (jsonData: any): Promise<{ success: boolea
 
         const userId = user.id;
 
-        // 2. DATA NORMALIZATION (Handle Legacy vs New Format)
+        // 2. CLEAR EXISTING DATA (Full Restore Mode)
+        console.log("Iniciando limpeza da base para importação limpa...");
+
+        // Delete in order to respect Foreign Keys (Shifts depend on Employees)
+        const { error: shiftsDeleteError } = await supabase.from('shifts').delete().eq('user_id', userId);
+        if (shiftsDeleteError) console.error("Error deleting shifts:", shiftsDeleteError.message);
+
+        const { error: employeesDeleteError } = await supabase.from('employees').delete().eq('user_id', userId);
+        if (employeesDeleteError) console.error("Error deleting employees:", employeesDeleteError.message);
+
+        const { error: eventsDeleteError } = await supabase.from('events').delete().eq('user_id', userId);
+        if (eventsDeleteError) console.error("Error deleting events:", eventsDeleteError.message);
+
+        const { error: templatesDeleteError } = await supabase.from('shift_templates').delete().eq('user_id', userId);
+        if (templatesDeleteError) console.error("Error deleting shift templates:", templatesDeleteError.message);
+
+        // Note: schedule_data is upserted at the end, effectively replacing it.
+        // However, if we want to ensure a clean slate for the blob too, we can delete it here.
+        const { error: scheduleDataDeleteError } = await supabase.from('schedule_data').delete().eq('id', 'main'); // Assuming 'main' is the ID for the user's schedule_data blob
+        if (scheduleDataDeleteError) console.error("Error deleting schedule_data blob:", scheduleDataDeleteError.message);
+
+
+        // 3. DATA NORMALIZATION (Handle Legacy vs New Format)
         const rawData = jsonData as any;
 
         // Legacy: { version: "1.0", data: { employees: [], shifts: [], ... } }
@@ -47,7 +69,7 @@ export const importBackupData = async (jsonData: any): Promise<{ success: boolea
         if (!settingsData.employeeRoutines && rootData.employeeRoutines) settingsData.employeeRoutines = rootData.employeeRoutines;
         if (!settingsData.events && rootData.events && Array.isArray(rootData.events)) settingsData.events = rootData.events; // Sometimes events are at root
 
-        // 3. ID MAPPING & GENERATION
+        // 4. ID MAPPING & GENERATION
         const employeeIdMap = new Map<string, string>();
 
         // Process Employees (Generate UUIDs)
