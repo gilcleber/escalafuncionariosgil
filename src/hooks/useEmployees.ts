@@ -21,8 +21,7 @@ export const useEmployees = () => {
             const { data, error } = await supabase
                 .from('employees')
                 .select('*')
-                // .eq('user_id', userId) // RLS handles this usually but we keep it safe? user_id is implicit in RLS but precise.
-                .order('display_order', { ascending: true }) // Restored
+                // .order('display_order', { ascending: true }) // DISABLED due to Schema Mismatch (PGRST204)
                 .order('name', { ascending: true });
 
             // Cast data to any to avoid "excessively deep" error
@@ -37,7 +36,8 @@ export const useEmployees = () => {
                 defaultShift: emp.default_shift_template_id || '',
                 active: emp.active,
                 endDate: emp.end_date,
-                displayOrder: emp.display_order
+                // displayOrder: emp.display_order // DISABLED
+                displayOrder: 0
             }));
 
             setEmployees(mappedEmployees);
@@ -59,7 +59,7 @@ export const useEmployees = () => {
 
         try {
             // Calculate next display order
-            const maxOrder = employees.reduce((max, e) => Math.max(max, e.displayOrder || 0), 0);
+            // prompt removed
 
             // @ts-ignore
             const { data, error } = await supabase
@@ -70,7 +70,7 @@ export const useEmployees = () => {
                     position: employee.position,
                     default_shift_template_id: employee.defaultShift || null,
                     active: true,
-                    display_order: maxOrder + 1 // Restored
+                    // display_order: maxOrder + 1 // DISABLED
                 }])
                 .select()
                 .single();
@@ -83,7 +83,7 @@ export const useEmployees = () => {
                 position: data.position,
                 defaultShift: data.default_shift_template_id || '',
                 active: true,
-                displayOrder: data.display_order
+                displayOrder: 0 // DISABLED
             };
 
             setEmployees(prev => [...prev, newEmployee]);
@@ -98,9 +98,7 @@ export const useEmployees = () => {
             const updates: any = {};
             if (employee.name) updates.name = employee.name;
             if (employee.position) updates.position = employee.position;
-            // if (employee.defaultShift !== undefined) updates.default_shift_template_id = employee.defaultShift || null;
-            // if (employee.defaultShift !== undefined) updates.default_shift_template_id = employee.defaultShift || null;
-            if (employee.displayOrder !== undefined) updates.display_order = employee.displayOrder; // Restored
+            // if (employee.displayOrder !== undefined) updates.display_order = employee.displayOrder; // DISABLED
 
             if (employee.defaultShift !== undefined) updates.default_shift_template_id = employee.defaultShift || null;
 
@@ -184,36 +182,8 @@ export const useEmployees = () => {
     };
 
     const reorderEmployees = async (items: { id: string; displayOrder: number }[]) => {
-        try {
-            const updates = items.map(item => ({
-                id: item.id,
-                display_order: item.displayOrder,
-                updated_at: new Date().toISOString()
-            }));
-
-            // We must update one by one or upsert. Upsert is better but requires all fields? 
-            // 'upsert' works with partials if we are careful? No, mostly 'update' loop is safer for partials in some contexts, 
-            // but let's try looping updates for safety or RPC.
-            // Actually, we can just map and promise.all
-
-            await Promise.all(updates.map(update =>
-                supabase.from('employees').update({ display_order: update.display_order }).eq('id', update.id)
-            ));
-
-            // Optimistic update
-            setEmployees(prev => {
-                const newEmp = [...prev];
-                items.forEach(item => {
-                    const idx = newEmp.findIndex(e => e.id === item.id);
-                    if (idx !== -1) newEmp[idx].displayOrder = item.displayOrder;
-                });
-                return newEmp.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
-            });
-
-        } catch (error) {
-            console.error("Error reordering employees:", error);
-            alert("Erro ao reordenar funcionários.");
-        }
+        console.warn("Reorder disabled due to schema mismatch");
+        // Logic Disabled
     };
 
     return {
