@@ -30,9 +30,30 @@ const FullScreenSchedule: React.FC<FullScreenScheduleProps> = ({
     onBatchEdit,
     onBatchClear
 }) => {
-    const { scheduleData } = useSchedule();
+    const { scheduleData, setCurrentMonth } = useSchedule();
     const { month, year, employees, shifts, settings } = scheduleData;
     const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    // Navigation Handlers
+    const handlePrevMonth = () => {
+        let newMonth = month - 1;
+        let newYear = year;
+        if (newMonth < 0) {
+            newMonth = 11;
+            newYear -= 1;
+        }
+        setCurrentMonth(newMonth, newYear);
+    };
+
+    const handleNextMonth = () => {
+        let newMonth = month + 1;
+        let newYear = year;
+        if (newMonth > 11) {
+            newMonth = 0;
+            newYear += 1;
+        }
+        setCurrentMonth(newMonth, newYear);
+    };
 
     // Helper: Get Shifts for Employee/Date
     const getShifts = (employeeId: string, date: string): Shift[] => {
@@ -99,13 +120,19 @@ const FullScreenSchedule: React.FC<FullScreenScheduleProps> = ({
 
                 {/* Linha Principal: Setas e Data */}
                 <div className="flex items-center justify-center gap-8 mt-1">
-                    <ArrowLeft className="h-5 w-5 text-red-600 cursor-pointer hover:text-red-500 transition-colors stroke-[3]" />
+                    <ArrowLeft
+                        onClick={handlePrevMonth}
+                        className="h-5 w-5 text-red-600 cursor-pointer hover:text-red-500 transition-colors stroke-[3] active:scale-90"
+                    />
 
                     <h1 className="text-xl font-black tracking-widest uppercase font-mono whitespace-nowrap text-white drop-shadow-md">
                         {MONTHS[month]} {year} - {MONTHS[(month + 1) % 12]} {month === 11 ? year + 1 : year}
                     </h1>
 
-                    <ArrowRight className="h-5 w-5 text-red-600 cursor-pointer hover:text-red-500 transition-colors stroke-[3]" />
+                    <ArrowRight
+                        onClick={handleNextMonth}
+                        className="h-5 w-5 text-red-600 cursor-pointer hover:text-red-500 transition-colors stroke-[3] active:scale-90"
+                    />
                 </div>
             </div>
 
