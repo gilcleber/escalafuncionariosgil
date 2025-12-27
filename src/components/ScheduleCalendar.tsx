@@ -172,8 +172,8 @@ const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
         {shifts.map((shift, index) => (
           <div key={index} className="text-xs font-medium leading-tight text-center flex justify-center">
             {shift.type === 'work' && shift.startTime && shift.endTime
-              ? <div className="bg-[#dcfce7] text-[#166534] border border-[#86efac] rounded-full px-2 py-0.5 text-[11px] font-bold shadow-sm whitespace-nowrap">
-                {formatTime(shift.startTime)} - {formatTime(shift.endTime)}
+              ? <div className="bg-[#e6fff0] text-[#065f46] border border-[#bbf7d0] rounded-full px-2 py-0.5 text-[11px] font-bold shadow-sm whitespace-nowrap inline-block">
+                {formatTime(shift.startTime)}–{formatTime(shift.endTime)}
               </div>
               : shift.type === 'dayoff' ? 'FOLGA' :
                 shift.type === 'vacation' ? 'FÉRIAS' :

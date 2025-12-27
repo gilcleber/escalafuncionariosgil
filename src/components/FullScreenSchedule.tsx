@@ -93,8 +93,9 @@ const FullScreenSchedule: React.FC<FullScreenScheduleProps> = ({
                     let styleClass = 'bg-gray-100 text-gray-800 border-gray-300'; // Default
 
                     if (shift.type === 'work' && shift.startTime && shift.endTime) {
-                        content = `${formatTime(shift.startTime)}-${formatTime(shift.endTime)}`;
-                        styleClass = 'bg-green-100 border-2 border-green-300 text-green-800 font-semibold rounded-full px-2 py-0.5 text-[10px] shadow-sm';
+                        content = `${formatTime(shift.startTime)}–${formatTime(shift.endTime)}`;
+                        // Exact requested style: bg-[#e6fff0] color-[#065f46]
+                        styleClass = 'bg-[#e6fff0] text-[#065f46] font-semibold rounded-full px-3 py-1.5 text-[13px] shadow-sm inline-block whitespace-nowrap border border-[#bbf7d0]';
                     } else if (shift.type === 'dayoff') {
                         // ...
                         content = 'FOLGA';

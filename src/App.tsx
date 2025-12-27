@@ -47,8 +47,8 @@ const App: React.FC = () => {
           </Routes>
         </HashRouter>
       </TooltipProvider>
-      <div style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 9999, fontSize: '14px', fontWeight: 'bold', color: 'white', backgroundColor: '#ef4444', padding: '8px 12px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.2)', pointerEvents: 'none', fontFamily: 'monospace' }}>
-        DEBUG MODE: v1.3.1 · 35b8e6e
+      <div style={{ position: 'fixed', bottom: '4px', right: '8px', zIndex: 9999, fontSize: '10px', color: '#94a3b8', opacity: 0.7, pointerEvents: 'none', fontFamily: 'monospace' }}>
+        v1.3.2 (2025-12-27) · RELEASE_PENDING
       </div>
     </QueryClientProvider>
   );
