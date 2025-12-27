@@ -38,10 +38,7 @@ const ScheduleHeader: React.FC = () => {
     <div className="space-y-4 mb-6">
       <div className="flex justify-between items-center h-8">
         <div className="flex items-center gap-4">
-          {/* DEBUG PANEL */}
-          <div className="text-xs text-red-500 font-bold font-mono border border-red-200 bg-red-50 p-1 rounded">
-            [DEBUG] F: {scheduleData.employees.length} | T: {scheduleData.shifts.length}
-          </div>
+
           {isSaving && (
             <div className="flex items-center text-sm text-neuro-text-secondary animate-pulse">
               <span className="w-2 h-2 bg-neuro-warning rounded-full mr-2"></span>

@@ -150,91 +150,93 @@ const EmployeeManager = () => {
       <div className="neuro-card p-6">
         <h2 className="text-2xl font-bold mb-6 text-neuro-text-primary">Lista de Funcionários</h2>
         <div className="space-y-4">
-          {scheduleData.employees.map((employee: Employee, index: number) => {
-            const isArchived = employee.active === false || !!employee.endDate;
-            const cardStyle = isArchived
-              ? "neuro-inset p-4 rounded-2xl bg-orange-100 border-2 border-orange-200"
-              : "neuro-inset p-4 rounded-2xl bg-neuro-element";
+          {[...scheduleData.employees]
+            .sort((a, b) => (a.displayOrder ?? 9999) - (b.displayOrder ?? 9999))
+            .map((employee: Employee, index: number, arr: Employee[]) => {
+              const isArchived = employee.active === false || !!employee.endDate;
+              const cardStyle = isArchived
+                ? "neuro-inset p-4 rounded-2xl bg-orange-50 border border-orange-200"
+                : "neuro-inset p-4 rounded-2xl bg-neuro-element";
 
-            return (
-              <div key={employee.id} className={cardStyle}>
-                {isEditing === employee.id ? (
-                  <EditEmployeeForm
-                    employee={employee}
-                    onSave={(updatedData) => handleSaveEmployee(employee.id, updatedData)}
-                    onCancel={() => setIsEditing(null)}
-                  />
-                ) : (
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-bold text-neuro-text-primary">{employee.name}</h3>
-                        {isArchived && (
-                          <span className="text-xs text-orange-700 font-bold bg-orange-200 px-2 py-0.5 rounded-full">
-                            Arquivado ({employee.endDate})
-                          </span>
+              return (
+                <div key={employee.id} className={cardStyle}>
+                  {isEditing === employee.id ? (
+                    <EditEmployeeForm
+                      employee={employee}
+                      onSave={(updatedData) => handleSaveEmployee(employee.id, updatedData)}
+                      onCancel={() => setIsEditing(null)}
+                    />
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-lg font-bold text-neuro-text-primary">{employee.name}</h3>
+                          {isArchived && (
+                            <span className="text-xs text-orange-700 font-bold bg-orange-100 px-2 py-0.5 rounded-full border border-orange-200">
+                              Arquivado ({employee.endDate})
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-neuro-text-secondary">{employee.position}</p>
+                      </div>
+
+                      <div className="flex gap-2 items-center">
+                        {/* Reorder Buttons */}
+                        <div className="flex gap-1 mr-2 bg-gray-100 p-1 rounded-lg border border-gray-200">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white hover:shadow-sm" onClick={() => moveEmployee(index, 'up')} disabled={index === 0}>
+                            <ArrowUp className="h-4 w-4 text-gray-600" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white hover:shadow-sm" onClick={() => moveEmployee(index, 'down')} disabled={index === arr.length - 1}>
+                            <ArrowDown className="h-4 w-4 text-gray-600" />
+                          </Button>
+                        </div>
+
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditEmployee(employee)}
+                          className="neuro-button text-neuro-text-primary"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+
+                        {isArchived ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRestore(employee.id)}
+                            className="neuro-button text-green-600 hover:text-green-700 hover:bg-green-50"
+                            title="Restaurar Funcionário"
+                          >
+                            <RotateCcw className="h-4 w-4" />
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openArchiveDialog(employee.id)}
+                            className="neuro-button text-orange-500 hover:text-orange-600 hover:bg-orange-50"
+                            title="Arquivar Funcionário"
+                          >
+                            <Archive className="h-4 w-4" />
+                          </Button>
                         )}
-                      </div>
-                      <p className="text-neuro-text-secondary">{employee.position}</p>
-                    </div>
 
-                    <div className="flex gap-2 items-center">
-                      {/* Reorder Buttons */}
-                      <div className="flex gap-1 mr-2 bg-gray-100 p-1 rounded-lg">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => moveEmployee(index, 'up')} disabled={index === 0}>
-                          <ArrowUp className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => moveEmployee(index, 'down')} disabled={index === scheduleData.employees.length - 1}>
-                          <ArrowDown className="h-4 w-4" />
-                        </Button>
-                      </div>
-
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEditEmployee(employee)}
-                        className="neuro-button text-neuro-text-primary"
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-
-                      {isArchived ? (
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleRestore(employee.id)}
-                          className="neuro-button text-green-600 hover:text-green-700 hover:bg-green-50"
-                          title="Restaurar Funcionário"
+                          onClick={() => handleDeleteEmployee(employee.id)}
+                          className="neuro-button text-neuro-error hover:bg-red-50"
+                          title="Excluir Permanentemente"
                         >
-                          <RotateCcw className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
-                      ) : (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openArchiveDialog(employee.id)}
-                          className="neuro-button text-orange-500 hover:text-orange-600 hover:bg-orange-50"
-                          title="Arquivar Funcionário"
-                        >
-                          <Archive className="h-4 w-4" />
-                        </Button>
-                      )}
-
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteEmployee(employee.id)}
-                        className="neuro-button text-neuro-error hover:bg-red-50"
-                        title="Excluir Permanentemente"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                  )}
+                </div>
+              );
+            })}
           {scheduleData.employees.length === 0 && (
             <div className="text-center py-12">
               <Users className="h-16 w-16 text-neuro-text-muted mx-auto mb-4" />
@@ -246,23 +248,23 @@ const EmployeeManager = () => {
       </div>
 
       <Dialog open={isArchiveDialogOpen} onOpenChange={setIsArchiveDialogOpen}>
-        <DialogContent>
+        <DialogContent className="neuro-card bg-neuro-surface border-none">
           <DialogHeader>
-            <DialogTitle>Arquivar Funcionário</DialogTitle>
+            <DialogTitle className="text-neuro-text-primary">Arquivar Funcionário</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <Label htmlFor="archive-date">Data de Saída:</Label>
+            <Label htmlFor="archive-date" className="text-neuro-text-primary font-medium">Data de Saída:</Label>
             <Input
               type="date"
               id="archive-date"
               value={archiveDate}
               onChange={(e) => setArchiveDate(e.target.value)}
-              className="mt-2"
+              className="mt-2 bg-white border-gray-200 text-gray-900 focus:ring-neuro-accent focus:border-neuro-accent"
             />
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setIsArchiveDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={handleConfirmArchive} className="bg-orange-500 hover:bg-orange-600 text-white">Confirmar Arquivamento</Button>
+            <Button variant="ghost" onClick={() => setIsArchiveDialogOpen(false)} className="text-neuro-text-secondary">Cancelar</Button>
+            <Button onClick={handleConfirmArchive} className="bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-sm">Confirmar Arquivamento</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -277,12 +279,15 @@ const EditEmployeeForm = ({ employee, onSave, onCancel }: {
 }) => {
   const [formData, setFormData] = useState({
     name: employee.name,
-    position: employee.position
+    position: employee.position,
+    endDate: employee.endDate || ''
   });
 
   const handleSave = () => {
     onSave(formData);
   };
+
+  const isArchived = employee.active === false || !!employee.endDate;
 
   return (
     <div className="space-y-4">
@@ -305,6 +310,18 @@ const EditEmployeeForm = ({ employee, onSave, onCancel }: {
             onChange={(e) => setFormData({ ...formData, position: e.target.value })}
           />
         </div>
+        {isArchived && (
+          <div className="md:col-span-2">
+            <Label htmlFor="edit-end-date" className="text-neuro-text-primary font-semibold">Data de Arquivamento (Saída)</Label>
+            <Input
+              type="date"
+              id="edit-end-date"
+              className="neuro-input mt-2 bg-orange-50 border-orange-200"
+              value={formData.endDate}
+              onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+            />
+          </div>
+        )}
       </div>
       <div className="flex gap-2 justify-end">
         <Button

@@ -47,8 +47,8 @@ const App: React.FC = () => {
           </Routes>
         </HashRouter>
       </TooltipProvider>
-      <div style={{ position: 'fixed', bottom: 0, left: 0, width: '100%', background: 'blue', color: 'white', textAlign: 'center', zIndex: 9999, fontWeight: 'bold', padding: '5px' }}>
-        ⚠️ VERSÃO ATUALIZADA - FAIXA EMBAIXO AGORA! CONFIRA AS CORES E IMPORTAÇÃO ⚠️
+      <div style={{ position: 'fixed', bottom: '4px', right: '8px', zIndex: 9999, fontSize: '10px', color: '#94a3b8', opacity: 0.6, userSelect: 'none', pointerEvents: 'none', fontFamily: 'monospace' }}>
+        v1.3.0 (2025-12-26) · b889f59
       </div>
     </QueryClientProvider>
   );
