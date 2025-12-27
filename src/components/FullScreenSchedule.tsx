@@ -80,7 +80,7 @@ const FullScreenSchedule: React.FC<FullScreenScheduleProps> = ({
         return 'bg-blue-600 text-white'; // Weekday
     };
 
-    import { formatTime } from '@/utils/timeUtils';
+    // (Import moved to top)
 
     // ... (existing code)
 
