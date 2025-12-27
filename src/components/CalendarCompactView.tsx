@@ -82,7 +82,9 @@ const CalendarCompactView: React.FC<CalendarCompactViewProps> = ({
         {shifts.map((shift, index) => (
           <div key={`shift-${index}`} className="text-xs leading-tight text-center font-semibold text-neuro-text-primary">
             {shift.type === 'work' && shift.startTime && shift.endTime
-              ? `${formatTime(shift.startTime)}-${formatTime(shift.endTime)}`
+              ? <div className="bg-[#dcfce7] text-[#166534] border border-[#86efac] rounded-full px-2 py-0.5 text-[11px] font-bold shadow-sm whitespace-nowrap inline-block">
+                {formatTime(shift.startTime)} - {formatTime(shift.endTime)}
+              </div>
               : shift.type === 'dayoff' ? 'FOLGA' :
                 shift.type === 'vacation' ? 'FÉRIAS' :
                   shift.type === 'medical' ? 'ATESTADO' :

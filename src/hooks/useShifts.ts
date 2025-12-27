@@ -59,8 +59,8 @@ export const useShifts = () => {
                 user_id: userId,
                 employee_id: shift.employeeId,
                 date: shift.date,
-                start_time: shift.startTime,
-                end_time: shift.endTime,
+                start_time: shift.startTime ? shift.startTime : null, // Send null if empty
+                end_time: shift.endTime ? shift.endTime : null,       // Send null if empty
                 type: shift.type,
                 description: shift.description || ''
             };
@@ -106,8 +106,8 @@ export const useShifts = () => {
     const updateShift = async (id: string, shift: Partial<Shift>) => {
         try {
             const updates: any = {};
-            if (shift.startTime) updates.start_time = shift.startTime;
-            if (shift.endTime) updates.end_time = shift.endTime;
+            if (shift.startTime !== undefined) updates.start_time = shift.startTime ? shift.startTime : null;
+            if (shift.endTime !== undefined) updates.end_time = shift.endTime ? shift.endTime : null;
             if (shift.type) updates.type = shift.type;
             if (shift.description !== undefined) updates.description = shift.description;
             if (shift.date) updates.date = shift.date;
