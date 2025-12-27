@@ -5,6 +5,7 @@ import { AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Shift } from '@/types/employee';
 import { validateWorkRules } from '@/utils/workRules';
+import { formatTime } from '@/utils/timeUtils';
 
 interface CalendarCompactViewProps {
   scheduleData: any;
@@ -35,13 +36,13 @@ const CalendarCompactView: React.FC<CalendarCompactViewProps> = ({
 }) => {
   const calendarDays = generateCalendarDays();
   const daysInMonth = getDaysInMonth(scheduleData.month, scheduleData.year);
-  
+
   const hasValidationErrors = (employeeId: string) => {
     const violations = validateWorkRules(
-      scheduleData.shifts, 
-      employeeId, 
-      scheduleData.month, 
-      scheduleData.year, 
+      scheduleData.shifts,
+      employeeId,
+      scheduleData.month,
+      scheduleData.year,
       scheduleData.settings.workRules
     );
     return violations.length > 0;
@@ -50,7 +51,7 @@ const CalendarCompactView: React.FC<CalendarCompactViewProps> = ({
   // Function to get all manager-defined shifts for an employee on a specific date
   const getManagerDefinedShifts = (employeeId: string, date: string): Shift[] => {
     const allShifts = scheduleData.shifts.filter(s => s.employeeId === employeeId && s.date === date);
-    
+
     // Return only shifts that are either:
     // 1. Non-work shifts (dayoff, vacation, etc.)
     // 2. Work shifts with specific start and end times (manager-defined)
@@ -72,31 +73,31 @@ const CalendarCompactView: React.FC<CalendarCompactViewProps> = ({
   const getMultipleShiftsAndEventsDisplay = (shifts: Shift[], events: any[]): React.ReactNode => {
     const hasShifts = shifts.length > 0;
     const hasEvents = events.length > 0;
-    
+
     if (!hasShifts && !hasEvents) return '';
-    
+
     return (
       <div className="flex flex-col gap-0.5">
         {/* Display shifts first */}
         {shifts.map((shift, index) => (
           <div key={`shift-${index}`} className="text-xs leading-tight text-center font-semibold text-neuro-text-primary">
-            {shift.type === 'work' && shift.startTime && shift.endTime 
-              ? `${shift.startTime}-${shift.endTime}`
+            {shift.type === 'work' && shift.startTime && shift.endTime
+              ? `${formatTime(shift.startTime)}-${formatTime(shift.endTime)}`
               : shift.type === 'dayoff' ? 'FOLGA' :
                 shift.type === 'vacation' ? 'FÉRIAS' :
-                shift.type === 'medical' ? 'ATESTADO' :
-                shift.type === 'holiday' ? 'FERIADO' :
-                shift.type === 'breastfeeding' ? 'AMAMENT.' :
-                shift.type === 'external' ? 'EXTERNO' :
-                shift.type === 'suspension' ? 'SUSPENSÃO' :
-                shift.type === 'paternity' ? 'PATERNID.' :
-                shift.type === 'blood_donation' ? 'DOAÇÃO' :
-                shift.type === 'military' ? 'MILITAR' :
-                shift.type === 'marriage' ? 'CASAMENTO' :
-                shift.type === 'public_service' ? 'SERV.PÚB.' :
-                shift.type === 'family_death' ? 'ÓBITO' :
-                shift.type === 'deduct_day' ? 'DESCONTO' :
-                ''
+                  shift.type === 'medical' ? 'ATESTADO' :
+                    shift.type === 'holiday' ? 'FERIADO' :
+                      shift.type === 'breastfeeding' ? 'AMAMENT.' :
+                        shift.type === 'external' ? 'EXTERNO' :
+                          shift.type === 'suspension' ? 'SUSPENSÃO' :
+                            shift.type === 'paternity' ? 'PATERNID.' :
+                              shift.type === 'blood_donation' ? 'DOAÇÃO' :
+                                shift.type === 'military' ? 'MILITAR' :
+                                  shift.type === 'marriage' ? 'CASAMENTO' :
+                                    shift.type === 'public_service' ? 'SERV.PÚB.' :
+                                      shift.type === 'family_death' ? 'ÓBITO' :
+                                        shift.type === 'deduct_day' ? 'DESCONTO' :
+                                          ''
             }
           </div>
         ))}
@@ -130,8 +131,8 @@ const CalendarCompactView: React.FC<CalendarCompactViewProps> = ({
             {Array.from({ length: 7 }, (_, index) => (
               <div key={index} className={cn(
                 "neuro-outset-sm p-2 text-sm font-bold text-center rounded-xl",
-                index === 0 
-                  ? "bg-neuro-error/10 text-neuro-calendar-weekend" 
+                index === 0
+                  ? "bg-neuro-error/10 text-neuro-calendar-weekend"
                   : "bg-neuro-accent/10 text-neuro-calendar-weekday"
               )}>
                 {WEEKDAYS[index]}
@@ -144,8 +145,8 @@ const CalendarCompactView: React.FC<CalendarCompactViewProps> = ({
             <div key={employee.id} className="space-y-1">
               <div className={cn(
                 "neuro-outset-sm p-3 bg-gradient-to-r from-neuro-accent/20 to-neuro-accent-light/20 text-sm font-bold text-center rounded-xl flex items-center justify-center border-2",
-                hasValidationErrors(employee.id) 
-                  ? "border-neuro-error bg-neuro-error/10" 
+                hasValidationErrors(employee.id)
+                  ? "border-neuro-error bg-neuro-error/10"
                   : "border-neuro-accent/30"
               )}>
                 <div className="flex items-center gap-2">
@@ -155,7 +156,7 @@ const CalendarCompactView: React.FC<CalendarCompactViewProps> = ({
                   </span>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-7 gap-1">
                 {Array.from({ length: daysInMonth }, (_, index) => {
                   const day = index + 1;
@@ -163,7 +164,7 @@ const CalendarCompactView: React.FC<CalendarCompactViewProps> = ({
                   const shifts = getManagerDefinedShifts(employee.id, date);
                   const events = getEventsForDate(date);
                   const detailedDisplay = getMultipleShiftsAndEventsDisplay(shifts, events);
-                  
+
                   return (
                     <div
                       key={`${employee.id}-${day}`}

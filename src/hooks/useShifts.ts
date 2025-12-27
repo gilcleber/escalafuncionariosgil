@@ -34,8 +34,7 @@ export const useShifts = () => {
                 startTime: s.start_time.slice(0, 5), // '07:00:00' -> '07:00'
                 endTime: s.end_time.slice(0, 5),
                 type: s.type as Shift['type'],
-                description: s.description || undefined,
-                managerOverride: s.manager_override // Map from DB
+                description: s.description || undefined
             }));
 
             setShifts(mappedShifts);
@@ -63,8 +62,7 @@ export const useShifts = () => {
                 start_time: shift.startTime,
                 end_time: shift.endTime,
                 type: shift.type,
-                description: shift.description || '',
-                manager_override: shift.managerOverride
+                description: shift.description || ''
             };
 
             console.log('🚀 [addShift] Sending payload to Supabase:', payload);
@@ -95,8 +93,7 @@ export const useShifts = () => {
                 startTime: data.start_time.slice(0, 5),
                 endTime: data.end_time.slice(0, 5),
                 type: data.type as Shift['type'],
-                description: data.description || undefined,
-                managerOverride: data.manager_override
+                description: data.description || undefined
             };
 
             setShifts(prev => [...prev, newShift]);
@@ -114,7 +111,6 @@ export const useShifts = () => {
             if (shift.type) updates.type = shift.type;
             if (shift.description !== undefined) updates.description = shift.description;
             if (shift.date) updates.date = shift.date;
-            if (shift.managerOverride !== undefined) updates.manager_override = shift.managerOverride;
 
             console.log('🚀 [updateShift] Sending updates for ID:', id, updates);
 

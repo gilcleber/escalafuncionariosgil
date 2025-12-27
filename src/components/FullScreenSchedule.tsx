@@ -7,6 +7,7 @@ import { Shift } from '@/types/employee';
 import { useSchedule } from '@/contexts/ScheduleContextSupabase';
 import { isHoliday } from '@/utils/holidays';
 import { validateWorkRules } from '@/utils/workRules';
+import { formatTime } from '@/utils/timeUtils';
 
 interface FullScreenScheduleProps {
     onClose: () => void;
@@ -79,6 +80,10 @@ const FullScreenSchedule: React.FC<FullScreenScheduleProps> = ({
         return 'bg-blue-600 text-white'; // Weekday
     };
 
+    import { formatTime } from '@/utils/timeUtils';
+
+    // ... (existing code)
+
     const renderShiftContent = (shifts: Shift[]) => {
         if (!shifts.length) return null;
         return (
@@ -88,9 +93,10 @@ const FullScreenSchedule: React.FC<FullScreenScheduleProps> = ({
                     let styleClass = 'bg-gray-100 text-gray-800 border-gray-300'; // Default
 
                     if (shift.type === 'work' && shift.startTime && shift.endTime) {
-                        content = `${shift.startTime}-${shift.endTime}`;
-                        styleClass = 'bg-white border-2 border-blue-200 text-blue-800 font-semibold rounded-full px-2 py-0.5 text-[10px] shadow-sm';
+                        content = `${formatTime(shift.startTime)}-${formatTime(shift.endTime)}`;
+                        styleClass = 'bg-green-100 border-2 border-green-300 text-green-800 font-semibold rounded-full px-2 py-0.5 text-[10px] shadow-sm';
                     } else if (shift.type === 'dayoff') {
+                        // ...
                         content = 'FOLGA';
                         styleClass = 'bg-yellow-100 border-2 border-yellow-200 text-yellow-800 font-bold rounded-full px-2 py-0.5 text-[10px]';
                     } else {
