@@ -35,8 +35,8 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
   batchTargets
 }) => {
   const { scheduleData, addShift, updateShift, deleteShift } = useSchedule();
-  // Include 'network_program' in the state type definition
-  const [shiftType, setShiftType] = useState<Shift['type']>('work');
+  // Include 'network_program' in the state type definition. Valid types + UI-only abstraction 'homeoffice'
+  const [shiftType, setShiftType] = useState<Shift['type'] | 'homeoffice'>('work');
   const [shifts, setShifts] = useState<ShiftInfo[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [selectedEvent, setSelectedEvent] = useState('');
