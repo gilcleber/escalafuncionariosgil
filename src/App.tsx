@@ -48,7 +48,7 @@ const App: React.FC = () => {
         </HashRouter>
       </TooltipProvider>
       <div style={{ position: 'fixed', bottom: '4px', right: '8px', zIndex: 9999, fontSize: '10px', color: '#94a3b8', opacity: 0.7, pointerEvents: 'none', fontFamily: 'monospace' }}>
-        v1.3.2 (2025-12-27) · 7dce456
+        v1.3.3 (2025-12-27) · 5c4f6cd
       </div>
     </QueryClientProvider>
   );
