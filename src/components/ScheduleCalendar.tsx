@@ -14,6 +14,7 @@ import RoutineEditModal from './RoutineEditModal';
 import CalendarViewSelector, { CalendarViewType } from './CalendarViewSelector';
 import CalendarCompactView from './CalendarCompactView';
 import FullScreenSchedule from './FullScreenSchedule';
+import { formatTime } from '@/utils/timeUtils';
 
 
 interface ScheduleCalendarProps {
@@ -245,7 +246,7 @@ const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
 
     switch (shift.type) {
       case 'work':
-        return `E-${shift.startTime} / S-${shift.endTime}`;
+        return `E-${formatTime(shift.startTime)} / S-${formatTime(shift.endTime)}`;
       case 'dayoff':
         return 'FOLGA';
       case 'holiday':
@@ -293,7 +294,10 @@ const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
 
     switch (shift.type) {
       case 'work':
-        return 'neuro-inset bg-blue-50 text-blue-800';
+        if (shift.startTime && shift.endTime) {
+          return 'neuro-inset bg-green-100 text-green-800 border-1 border-green-300';
+        }
+        return 'neuro-inset bg-gray-100 text-gray-500'; // Invalid/Incomplete
       case 'dayoff':
         return 'neuro-inset bg-yellow-100 text-yellow-800 border-2 border-yellow-300';
       case 'holiday':
@@ -840,6 +844,11 @@ const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
           onToggleSelectionMode={toggleSelectionMode}
           onBatchEdit={handleBatchEdit}
           onBatchClear={handleBatchClear}
+          openModal={(type, data) => {
+            if (type === 'event' && data.date) {
+              handleGameCellClick(data.date);
+            }
+          }}
         />
       );
     }

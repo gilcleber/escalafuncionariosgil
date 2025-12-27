@@ -16,6 +16,7 @@ interface FullScreenScheduleProps {
     onToggleSelectionMode: () => void;
     onBatchEdit: () => void;
     onBatchClear: () => void;
+    openModal?: (type: 'event' | 'shift', data: any) => void; // New prop for opening modals
 }
 
 const MONTHS = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
@@ -28,7 +29,8 @@ const FullScreenSchedule: React.FC<FullScreenScheduleProps> = ({
     selectedCells,
     onToggleSelectionMode,
     onBatchEdit,
-    onBatchClear
+    onBatchClear,
+    openModal // Destructured
 }) => {
     const { scheduleData, setCurrentMonth } = useSchedule();
     const { month, year, employees, shifts, settings } = scheduleData;
@@ -233,8 +235,13 @@ const FullScreenSchedule: React.FC<FullScreenScheduleProps> = ({
                                     <td key={day} className="border border-gray-200 p-1 align-top bg-white/50 h-[40px]">
                                         {events.map((ev: any, idx: number) => (
                                             <div key={idx}
-                                                className="text-white text-[9px] font-bold px-1 py-0.5 rounded mb-1 text-center truncate shadow-sm"
+                                                className="text-white text-[9px] font-bold px-1 py-0.5 rounded mb-1 text-center truncate shadow-sm cursor-pointer hover:opacity-80 transition-opacity"
                                                 style={{ backgroundColor: ev.color || '#000000' }}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    console.log('CLICKED EVENT:', ev);
+                                                    if (openModal) openModal('event', ev);
+                                                }}
                                             >
                                                 {ev.name} {ev.time}
                                             </div>

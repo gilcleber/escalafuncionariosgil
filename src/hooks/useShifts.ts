@@ -56,23 +56,37 @@ export const useShifts = () => {
         const userId = user.id;
 
         try {
+            const payload = {
+                user_id: userId,
+                employee_id: shift.employeeId,
+                date: shift.date,
+                start_time: shift.startTime,
+                end_time: shift.endTime,
+                type: shift.type,
+                description: shift.description || '',
+                manager_override: shift.managerOverride
+            };
+
+            console.log('🚀 [addShift] Sending payload to Supabase:', payload);
+
             // @ts-ignore
             const { data, error } = await supabase
                 .from('shifts')
-                .insert([{
-                    user_id: userId,
-                    employee_id: shift.employeeId,
-                    date: shift.date,
-                    start_time: shift.startTime,
-                    end_time: shift.endTime,
-                    type: shift.type,
-                    description: shift.description || '',
-                    manager_override: shift.managerOverride // Persist
-                }])
+                .insert([payload])
                 .select()
                 .single();
 
-            if (error) throw error;
+            if (error) {
+                console.error('❌ [addShift] Supabase Error:', {
+                    message: error.message,
+                    details: error.details,
+                    hint: error.hint,
+                    code: error.code
+                });
+                throw error;
+            }
+
+            console.log('✅ [addShift] Success:', data);
 
             const newShift: Shift = {
                 id: data.id,
@@ -86,9 +100,9 @@ export const useShifts = () => {
             };
 
             setShifts(prev => [...prev, newShift]);
-        } catch (error) {
-            console.error('Error adding shift:', error);
-            alert('Erro ao adicionar turno.');
+        } catch (error: any) {
+            console.error('🚨 [addShift] Catch Error:', error);
+            alert(`Erro ao adicionar turno: ${error.message || 'Erro desconhecido'} (Verifique o console para detalhes)`);
         }
     };
 
@@ -102,20 +116,27 @@ export const useShifts = () => {
             if (shift.date) updates.date = shift.date;
             if (shift.managerOverride !== undefined) updates.manager_override = shift.managerOverride;
 
+            console.log('🚀 [updateShift] Sending updates for ID:', id, updates);
+
             // @ts-ignore
             const { error } = await supabase
                 .from('shifts')
                 .update(updates)
                 .eq('id', id);
 
-            if (error) throw error;
+            if (error) {
+                console.error('❌ [updateShift] Supabase Error:', error);
+                throw error;
+            }
+
+            console.log('✅ [updateShift] Success');
 
             setShifts(prev => prev.map(s =>
                 s.id === id ? { ...s, ...shift } : s
             ));
-        } catch (error) {
-            console.error('Error updating shift:', error);
-            alert('Erro ao atualizar turno.');
+        } catch (error: any) {
+            console.error('🚨 [updateShift] Catch Error:', error);
+            alert(`Erro ao atualizar turno: ${error.message || 'Erro desconhecido'} (Verifique o console)`);
         }
     };
 
