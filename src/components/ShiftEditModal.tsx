@@ -5,9 +5,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Save, X, Clock, Calendar, Users, Copy, Plus, Trash2 } from 'lucide-react';
+import { Save, X, Clock, Calendar, Users, Copy, Plus, Trash2, AlertTriangle, Lock, Unlock } from 'lucide-react';
 import { useSchedule } from '@/contexts/ScheduleContextSupabase';
 import { Shift, Employee } from '@/types/employee';
+import { validateNewShift } from '@/utils/workRules';
 
 interface ShiftEditModalProps {
   isOpen: boolean;
@@ -34,13 +35,18 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
   batchTargets
 }) => {
   const { scheduleData, addShift, updateShift, deleteShift } = useSchedule();
-  const [shiftType, setShiftType] = useState<'work' | 'dayoff' | 'homeoffice' | 'event' | 'birthday' | 'breastfeeding' | 'medical' | 'external' | 'suspension' | 'paternity' | 'blood_donation' | 'military' | 'marriage' | 'public_service' | 'family_death' | 'deduct_day' | 'vacation'>('work');
+  // Include 'network_program' in the state type definition
+  const [shiftType, setShiftType] = useState<Shift['type']>('work');
   const [shifts, setShifts] = useState<ShiftInfo[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [selectedEvent, setSelectedEvent] = useState('');
   const [copyToNextDays, setCopyToNextDays] = useState(false);
   const [daysToApply, setDaysToApply] = useState(5);
   const [vacationDays, setVacationDays] = useState(1);
+
+  // New States for Manager Override and Validation
+  const [managerOverride, setManagerOverride] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   const employee = scheduleData.employees.find(e => e.id === employeeId);
   const dateObj = new Date(date);
@@ -49,7 +55,9 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
   const shiftTypeOptions = [
     { value: 'work', label: 'Trabalho' },
     { value: 'dayoff', label: 'Folga' },
+    { value: 'holiday', label: 'Feriado' }, // Added explicit Holiday option if needed, usually mapped from system
     { value: 'homeoffice', label: 'Trabalho Remoto' },
+    { value: 'network_program', label: 'Programação em Rede' }, // New Option
     { value: 'event', label: 'Evento/Jogo' },
     { value: 'birthday', label: 'Aniversário' },
     { value: 'breastfeeding', label: 'Amamentação' },
@@ -71,7 +79,6 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
       console.log('ShiftEditModal: Opening for employee:', employeeId, 'date:', date);
 
       const shiftsForDate = scheduleData.shifts.filter(s => s.employeeId === employeeId && s.date === date);
-      console.log('ShiftEditModal: Shifts for date:', shiftsForDate);
 
       if (shiftsForDate.length > 0) {
         const shiftInfos = shiftsForDate.map(s => ({
@@ -81,13 +88,32 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
           description: s.description || ''
         }));
         setShifts(shiftInfos);
-        setShiftType(shiftsForDate[0].type === 'holiday' ? 'homeoffice' : shiftsForDate[0].type as any);
+        setShiftType(shiftsForDate[0].type);
+        setManagerOverride(shiftsForDate[0].managerOverride || false); // Load existing override
       } else {
         setShifts([{ id: 'new', startTime: '', endTime: '', description: '' }]);
         setShiftType('work');
+        setManagerOverride(false);
       }
     }
   }, [isOpen, date, employeeId, scheduleData.shifts]);
+
+  // Real-time Validation Effect
+  useEffect(() => {
+    if (shiftType === 'work' || shiftType === 'homeoffice' || shiftType === 'network_program') {
+      const firstShift = shifts[0] || { startTime: '08:00', endTime: '17:00' }; // Default for validation check if empty
+      const violations = validateNewShift({
+        employeeId,
+        date,
+        startTime: firstShift.startTime || '08:00',
+        endTime: firstShift.endTime || '17:00' // Assume full day if time not set yet to catch day-based rules
+      }, scheduleData.shifts);
+      setValidationErrors(violations);
+    } else {
+      setValidationErrors([]);
+    }
+  }, [shiftType, shifts, employeeId, date, scheduleData.shifts]);
+
 
   const addNewShift = () => {
     setShifts([...shifts, { id: `new-${Date.now()}`, startTime: '', endTime: '', description: '' }]);
@@ -96,7 +122,6 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
   const removeShift = (index: number) => {
     const shiftToRemove = shifts[index];
     if (shiftToRemove.id !== 'new' && !shiftToRemove.id.startsWith('new-')) {
-      console.log('ShiftEditModal: Deleting shift:', shiftToRemove.id);
       deleteShift(shiftToRemove.id);
     }
     setShifts(shifts.filter((_, i) => i !== index));
@@ -168,17 +193,10 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
   };
 
   const handleSave = () => {
-    // Determine Target List
     const targets = (batchTargets && batchTargets.length > 0)
       ? batchTargets
       : [{ employeeId, date }];
 
-    console.log(`ShiftEditModal: Saving ${targets.length} targets.`);
-    // If batch mode, we only support single shift editing for now (first item in shifts array)
-    // or we check the primary inputs. Since the UI for batch allows 1 set of inputs (Work, Start, End, Desc).
-    // usage of 'shifts' array state is for the dynamic list, but typically batch edit uses the first/main one.
-
-    // User Requirement: "If field is empty, do NOT overwrite existing"
     const inputShift = shifts[0] || { startTime: '', endTime: '', description: '' };
     const inputType = shiftType;
 
@@ -186,20 +204,8 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
       const tEmpId = target.employeeId;
       const tDate = target.date;
 
-      // Vacation Logic: Special Case
       if (shiftType === 'vacation') {
-        // ... (Keep existing vacation logic or simplify for batch?)
-        // Vacation usually implies a "Start Date" and "Duration". 
-        // Applying to a batch of random cells is weird. 
-        // Standard behavior: Apply "Vacation" status to THESE specific cells.
-
-        // If the user selected 5 loose days and clicked "Vacation" -> Set them all to Vacation.
-        // Ignore "duration" calc for batch mode?
-        // "getConsecutiveDays" logic is likely for "Start from this day".
-
         if (batchTargets && batchTargets.length > 0) {
-          // Batch Mode: Apply vacation to SELECTED cells only
-          // Check if existing
           const existing = scheduleData.shifts.find(s => s.employeeId === tEmpId && s.date === tDate);
           if (existing) deleteShift(existing.id);
 
@@ -208,68 +214,45 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
             date: tDate,
             startTime: '', endTime: '',
             type: 'vacation',
-            description: 'Férias'
+            description: 'Férias',
+            managerOverride // Persist override
           });
         } else {
-          // Single Mode: Use the consecutive days logic
           const vacationDates = getConsecutiveDaysForVacation(vacationDays);
-          vacationDates.forEach((vacationDate, index) => {
+          vacationDates.forEach((vacationDate) => {
             const existingVacationShift = scheduleData.shifts.find(s => s.employeeId === tEmpId && s.date === vacationDate);
-            if (existingVacationShift) updateShift(existingVacationShift.id, { type: 'vacation', description: `Férias` });
-            else addShift({ employeeId: tEmpId, date: vacationDate, startTime: '', endTime: '', type: 'vacation', description: `Férias` });
+            if (existingVacationShift) updateShift(existingVacationShift.id, { type: 'vacation', description: `Férias`, managerOverride });
+            else addShift({ employeeId: tEmpId, date: vacationDate, startTime: '', endTime: '', type: 'vacation', description: `Férias`, managerOverride });
           });
         }
 
       } else {
-        // Standard Shift Logic (Work, DayOff, HomeOffice, etc)
-
-        // 1. Find Existing
         const existing = scheduleData.shifts.find(s => s.employeeId === tEmpId && s.date === tDate);
-
-        // 2. Resolve Values (Smart Merge)
-        // If Input is Empty -> Keep Existing (if types are compatible)
-        // If Type Changed -> Logic varies. 
-        //    - If changing to Work -> Need times. If input empty & existing was Work, keep times. Else ???
-        //    - If changing to DayOff -> Clear times.
 
         let finalStart = inputShift.startTime;
         let finalEnd = inputShift.endTime;
         let finalDesc = inputShift.description;
 
         if (existing) {
-          // If input is empty, preserve existing
           if (!finalStart && existing.startTime) finalStart = existing.startTime;
           if (!finalEnd && existing.endTime) finalEnd = existing.endTime;
           if (!finalDesc && existing.description) finalDesc = existing.description;
 
-          // EXCEPT: If changing Type to something that doesn't use time (e.g. DayOff), clear times?
-          // User said: "If I leave blank, don't overwrite". 
-          // But if I change to Folga, keeping "08:00" is dirty.
-          // Let's assume: If Type is WORK/HOMEOFFICE, preserve times. If Type is FOLGA, ignore times.
-
-          if (inputType !== 'work' && inputType !== 'homeoffice') {
+          if (inputType !== 'work' && inputType !== 'homeoffice' && inputType !== 'network_program') {
             finalStart = '';
             finalEnd = '';
           }
-
-          // Delete old (to replace with new clean one, or just update?)
-          // Update is safer for IDs but standard pattern here is delete/add or update.
           deleteShift(existing.id);
         }
-
-        // 3. Add New
-        // Only add if it's a valid shift type or has times if required
-        // Actually, just add it.
 
         addShift({
           employeeId: tEmpId,
           date: tDate,
           startTime: finalStart || '',
           endTime: finalEnd || '',
-          type: inputType === 'homeoffice' ? 'holiday' : inputType, // Map homeoffice logic? Or keep type? Original code mapped to holiday??
-          // Wait, original code: const finalShiftType = shiftType === 'homeoffice' ? 'holiday' : shiftType;
-          // I will keep that logic.
-          description: finalDesc || ''
+          type: inputType === 'homeoffice' ? 'holiday' : inputType,
+          description: finalDesc || '',
+          managerOverride // Persist override
         });
       }
     });
@@ -289,6 +272,11 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
   const eventForDate = scheduleData.settings.events.find(e => e.date === date);
   const emptyDaysCount = getNextEmptyDays().length;
   const hasExistingShifts = scheduleData.shifts.some(s => s.employeeId === employeeId && s.date === date);
+
+  // Validation UI logic
+  const hasErrors = validationErrors.length > 0;
+  // If we have errors but validated by manager, we behave as "Success/Warning" instead of "Error"
+  const isBlocked = hasErrors && !managerOverride;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -322,7 +310,72 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
             </div>
           )}
 
-          {/* Copy to next days option */}
+          {/* Validation Errors Banner */}
+          {hasErrors && (
+            <div className={`neuro-inset p-4 rounded-2xl border-2 ${managerOverride ? 'bg-yellow-50 border-yellow-200' : 'bg-red-50 border-red-200'} animate-in fade-in`}>
+              <div className="flex items-start gap-3">
+                <AlertTriangle className={`h-5 w-5 shrink-0 ${managerOverride ? 'text-yellow-600' : 'text-red-600'}`} />
+                <div>
+                  <h4 className={`font-bold text-sm ${managerOverride ? 'text-yellow-800' : 'text-red-800'}`}>
+                    {managerOverride ? 'Alertas Ignorados pelo Gestor' : 'Regras de Trabalho Violadas'}
+                  </h4>
+                  <ul className="mt-1 space-y-1">
+                    {validationErrors.map((err, idx) => (
+                      <li key={idx} className={`text-xs ${managerOverride ? 'text-yellow-700' : 'text-red-700'}`}>
+                        • {err.replace('BLOQUEADO:', '')}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Shift Type */}
+          <div>
+            <Label className="text-neuro-text-primary font-semibold mb-2 block">Tipo de Turno</Label>
+            <Select value={shiftType} onValueChange={(value: any) => setShiftType(value)}>
+              <SelectTrigger className="neuro-inset bg-neuro-element text-neuro-text-primary border-none rounded-2xl h-12 focus:ring-2 focus:ring-neuro-accent">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="neuro-card bg-neuro-surface border-none rounded-2xl z-[250]">
+                {shiftTypeOptions.map(option => (
+                  <SelectItem
+                    key={option.value}
+                    value={option.value}
+                    className="text-neuro-text-primary hover:bg-neuro-element rounded-xl my-1 mx-2 focus:bg-neuro-accent/20"
+                  >
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Manager Override Checkbox */}
+          <div
+            className={`neuro-inset p-4 rounded-2xl transition-all cursor-pointer border ${managerOverride ? 'bg-orange-50 border-orange-200' : 'bg-neuro-element border-transparent'}`}
+            onClick={() => setManagerOverride(!managerOverride)}
+          >
+            <div className="flex items-start gap-3">
+              <div className={`mt-0.5 w-5 h-5 rounded border flex items-center justify-center transition-colors ${managerOverride ? 'bg-orange-500 border-orange-500' : 'bg-white border-gray-300'}`}>
+                {managerOverride ? <Unlock className="h-3 w-3 text-white" /> : <Lock className="h-3 w-3 text-gray-400" />}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <Label className={`font-bold cursor-pointer ${managerOverride ? 'text-orange-800' : 'text-gray-700'}`}>
+                    Liberado pelo Gestor
+                  </Label>
+                  {managerOverride && <span className="text-[10px] bg-orange-200 text-orange-800 px-1.5 rounded-full font-bold">ATIVO</span>}
+                </div>
+                <p className={`text-xs mt-1 ${managerOverride ? 'text-orange-700' : 'text-gray-500'}`}>
+                  Marque para ignorar alertas de regras (7 dias seguidos, interjornada, domingos, etc.) e forçar o salvamento.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Copy to next days (Existing logic but conditional rendering) */}
           {!hasExistingShifts && emptyDaysCount > 0 && shiftType !== 'vacation' && (!batchTargets || batchTargets.length === 0) && (
             <div className="neuro-inset p-3 bg-neuro-accent/10 rounded-2xl space-y-2">
               <div className="flex items-center space-x-2">
@@ -356,27 +409,6 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
             </div>
           )}
 
-          {/* Shift Type */}
-          <div>
-            <Label className="text-neuro-text-primary font-semibold mb-2 block">Tipo de Turno</Label>
-            <Select value={shiftType} onValueChange={(value: any) => setShiftType(value)}>
-              <SelectTrigger className="neuro-inset bg-neuro-element text-neuro-text-primary border-none rounded-2xl h-12 focus:ring-2 focus:ring-neuro-accent">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="neuro-card bg-neuro-surface border-none rounded-2xl z-50">
-                {shiftTypeOptions.map(option => (
-                  <SelectItem
-                    key={option.value}
-                    value={option.value}
-                    className="text-neuro-text-primary hover:bg-neuro-element rounded-xl my-1 mx-2 focus:bg-neuro-accent/20"
-                  >
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           {/* Vacation Days Input */}
           {shiftType === 'vacation' && (
             <div>
@@ -404,7 +436,7 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
                 <SelectTrigger className="neuro-inset bg-neuro-element text-neuro-text-primary border-none rounded-2xl h-12 focus:ring-2 focus:ring-neuro-accent">
                   <SelectValue placeholder="Selecione um evento" />
                 </SelectTrigger>
-                <SelectContent className="neuro-card bg-neuro-surface border-none rounded-2xl z-50">
+                <SelectContent className="neuro-card bg-neuro-surface border-none rounded-2xl z-[250]">
                   {scheduleData.settings.events.map(event => (
                     <SelectItem
                       key={event.id}
@@ -420,14 +452,14 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
           )}
 
           {/* Template Selection for Work */}
-          {(shiftType === 'work' || shiftType === 'homeoffice') && (
+          {(shiftType === 'work' || shiftType === 'homeoffice' || shiftType === 'network_program') && (
             <div>
               <Label className="text-neuro-text-primary font-semibold mb-2 block">Modelo de Turno (Opcional)</Label>
               <Select value={selectedTemplate} onValueChange={handleTemplateSelect}>
                 <SelectTrigger className="neuro-inset bg-neuro-element text-neuro-text-primary border-none rounded-2xl h-12 focus:ring-2 focus:ring-neuro-accent">
                   <SelectValue placeholder="Selecione um modelo ou digite manualmente" />
                 </SelectTrigger>
-                <SelectContent className="neuro-card bg-neuro-surface border-none rounded-2xl z-50">
+                <SelectContent className="neuro-card bg-neuro-surface border-none rounded-2xl z-[250]">
                   {scheduleData.settings.shiftTemplates.map(template => (
                     <SelectItem
                       key={template.id}
@@ -443,7 +475,7 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
           )}
 
           {/* Multiple Shifts for Work/Remote Work */}
-          {(shiftType === 'work' || shiftType === 'homeoffice') && (
+          {(shiftType === 'work' || shiftType === 'homeoffice' || shiftType === 'network_program') && (
             <div className="space-y-3">
               <Label className="text-sm font-semibold text-neuro-text-primary">Horários de Trabalho</Label>
               {shifts.map((shift, index) => (
@@ -546,7 +578,11 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
               </Button>
             )}
 
-            <Button onClick={handleSave} className="neuro-button bg-neuro-accent text-white hover:bg-neuro-accent-light">
+            <Button
+              onClick={handleSave}
+              disabled={isBlocked}
+              className={`neuro-button text-white ${isBlocked ? 'bg-gray-400 cursor-not-allowed' : 'bg-neuro-accent hover:bg-neuro-accent-light'}`}
+            >
               <Save className="h-4 w-4 mr-2" />
               Salvar
             </Button>

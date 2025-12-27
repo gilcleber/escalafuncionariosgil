@@ -17,9 +17,10 @@ export interface Shift {
   date: string;
   startTime: string;
   endTime: string;
-  type: 'work' | 'dayoff' | 'holiday' | 'event' | 'birthday' | 'breastfeeding' | 'medical' | 'external' | 'suspension' | 'paternity' | 'blood_donation' | 'military' | 'marriage' | 'public_service' | 'family_death' | 'deduct_day' | 'vacation';
+  type: 'work' | 'dayoff' | 'holiday' | 'event' | 'birthday' | 'breastfeeding' | 'medical' | 'external' | 'suspension' | 'paternity' | 'blood_donation' | 'military' | 'marriage' | 'public_service' | 'family_death' | 'deduct_day' | 'vacation' | 'network_program';
   description?: string;
   color?: string;
+  managerOverride?: boolean;
 }
 
 export interface WorkRule {
