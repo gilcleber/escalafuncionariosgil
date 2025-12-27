@@ -31,8 +31,8 @@ export const useShifts = () => {
                 id: s.id,
                 employeeId: s.employee_id,
                 date: s.date,
-                startTime: s.start_time.slice(0, 5), // '07:00:00' -> '07:00'
-                endTime: s.end_time.slice(0, 5),
+                startTime: s.start_time?.slice(0, 5) || '', // Safe access
+                endTime: s.end_time?.slice(0, 5) || '',     // Safe access
                 type: s.type as Shift['type'],
                 description: s.description || undefined
             }));
@@ -90,8 +90,8 @@ export const useShifts = () => {
                 id: data.id,
                 employeeId: data.employee_id,
                 date: data.date,
-                startTime: data.start_time.slice(0, 5),
-                endTime: data.end_time.slice(0, 5),
+                startTime: data.start_time?.slice(0, 5) || '', // Safe access
+                endTime: data.end_time?.slice(0, 5) || '',     // Safe access
                 type: data.type as Shift['type'],
                 description: data.description || undefined
             };

@@ -200,6 +200,15 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
     const inputShift = shifts[0] || { startTime: '', endTime: '', description: '' };
     const inputType = shiftType;
 
+    // --- VALIDATION REQUESTED BY USER ---
+    if ((inputType === 'work' || inputType === 'homeoffice') && !managerOverride) {
+      if (!inputShift.startTime || !inputShift.endTime) {
+        alert('Erro: Horários de início e fim são obrigatórios para turnos de trabalho.');
+        return;
+      }
+    }
+    // ------------------------------------
+
     targets.forEach(target => {
       const tEmpId = target.employeeId;
       const tDate = target.date;
