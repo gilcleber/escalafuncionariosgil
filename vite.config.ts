@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
   },
-  base: "/escalafuncionariosgil/",
+  base: "/",
   plugins: [
     react(),
     mode === 'development' &&
